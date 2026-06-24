@@ -1,0 +1,16 @@
+{
+  "engineModel": "General Electric CF6",
+  "revisao": "1.0.0",
+  "dataRevisao": "2026-06-24",
+  "unidadesOriginais": {
+    "fuelFlow": "pph",
+    "n1": "percent"
+  },
+  "limites": {
+    "maxN1": 115.0,
+    "minN1": 20.0
+  },
+  "referenciaFonte": "DEMONSTRATION DATA - NOT FOR OPERATIONAL USE",
+  "checksum": "04e9800998ecf8427ed41d8cd98f00b2",
+  "tabelas": {}
+}

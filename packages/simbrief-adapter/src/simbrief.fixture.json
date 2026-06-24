@@ -1,0 +1,64 @@
+{
+  "general": {
+    "flight_number": "RG860",
+    "icao_airline": "VRG",
+    "initial_altitude": "33000",
+    "route": "SBGL UZ6 VUGAX KJFK",
+    "route_distance": "4150"
+  },
+  "aircraft": {
+    "icao_code": "B742",
+    "name": "B747-200B",
+    "engine_type": "JT9D-7A",
+    "reg": "PP-VNA"
+  },
+  "weights": {
+    "est_zfw": "448000",
+    "est_tow": "720000",
+    "est_ldw": "530000",
+    "payload": "68000"
+  },
+  "fuel": {
+    "plan_ramp": "282000",
+    "taxi": "5000",
+    "enroute_burn": "242000",
+    "reserve": "35000"
+  },
+  "origin": {
+    "icao_code": "SBGL",
+    "elevation": "28"
+  },
+  "destination": {
+    "icao_code": "KJFK",
+    "elevation": "13"
+  },
+  "alternate": {
+    "icao_code": "KEWR"
+  },
+  "weather": {
+    "departure_temp": "25",
+    "departure_qnh": "1012"
+  },
+  "navlog": {
+    "fix": [
+      {
+        "ident": "VUGAX",
+        "wind_dir": "270",
+        "wind_spd": "45",
+        "fl": "330",
+        "oat": "-45"
+      }
+    ]
+  },
+  "times": {
+    "taxi_out": "15",
+    "climb": "25",
+    "cruise": "400",
+    "descent": "25",
+    "taxi_in": "10",
+    "est_block": "475"
+  },
+  "params": {
+    "units": "lbs"
+  }
+}

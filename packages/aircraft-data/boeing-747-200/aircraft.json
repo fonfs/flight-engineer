@@ -1,0 +1,7 @@
+{
+  "manufacturer": "Boeing",
+  "family": "747",
+  "variants": ["747-200B", "747-200F"],
+  "engines": ["JT9D", "CF6", "RB211"],
+  "description": "Boeing 747-200 Classic family profile"
+}

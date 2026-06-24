@@ -1,0 +1,16 @@
+{
+  "engineModel": "Pratt & Whitney JT9D",
+  "revisao": "1.0.0",
+  "dataRevisao": "2026-06-24",
+  "unidadesOriginais": {
+    "fuelFlow": "pph",
+    "epr": "ratio"
+  },
+  "limites": {
+    "maxEPR": 2.2,
+    "minEPR": 0.9
+  },
+  "referenciaFonte": "DEMONSTRATION DATA - NOT FOR OPERATIONAL USE",
+  "checksum": "88ecf8427ed41d8cd98f00b204e98009",
+  "tabelas": {}
+}

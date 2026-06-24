@@ -1,0 +1,20 @@
+{
+  "manufacturer": "Boeing",
+  "family": "747",
+  "variante": "747-200B",
+  "revisao": "1.0.0",
+  "dataRevisao": "2026-06-24",
+  "unidadesOriginais": {
+    "weight": "lbs",
+    "altitude": "ft",
+    "temperature": "C"
+  },
+  "limites": {
+    "maxTakeoffWeight": 830000,
+    "maxLandingWeight": 564000,
+    "maxZeroFuelWeight": 490000
+  },
+  "referenciaFonte": "DEMONSTRATION DATA - NOT FOR OPERATIONAL USE",
+  "checksum": "d41d8cd98f00b204e9800998ecf8427e",
+  "tabelas": {}
+}
