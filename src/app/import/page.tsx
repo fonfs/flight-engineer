@@ -4,7 +4,20 @@ import React, { useState } from 'react';
 import { FlightContext } from '@classic-flight-engineer/aviation-domain';
 import { parseAndNormalizeSimBrief } from '@classic-flight-engineer/simbrief-adapter';
 
-export default function ImportPage() {
+interface ImportPageProps {
+  flightData: {
+    flightContext: FlightContext;
+    warnings: string[];
+    raw: any;
+  } | null;
+  setFlightData: (data: {
+    flightContext: FlightContext;
+    warnings: string[];
+    raw: any;
+  } | null) => void;
+}
+
+export default function ImportPage({ flightData, setFlightData }: ImportPageProps) {
   const [pilotId, setPilotId] = useState('');
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
@@ -15,16 +28,16 @@ export default function ImportPage() {
     flightContext: FlightContext;
     warnings: string[];
     raw: any;
-  } | null>(null);
+  } | null>(flightData);
 
   const [lastImportTime, setLastImportTime] = useState<string | null>(null);
 
   // Form editable states
-  const [editableCallsign, setEditableCallsign] = useState('');
-  const [editableRoute, setEditableRoute] = useState('');
-  const [editableAltitude, setEditableAltitude] = useState(0);
-  const [editableZfw, setEditableZfw] = useState(0);
-  const [editableBlockFuel, setEditableBlockFuel] = useState(0);
+  const [editableCallsign, setEditableCallsign] = useState(flightData?.flightContext.callsign || '');
+  const [editableRoute, setEditableRoute] = useState(flightData?.flightContext.route || '');
+  const [editableAltitude, setEditableAltitude] = useState(flightData?.flightContext.plannedCruiseAltitude || 0);
+  const [editableZfw, setEditableZfw] = useState(flightData?.flightContext.zeroFuelWeight || 0);
+  const [editableBlockFuel, setEditableBlockFuel] = useState(flightData?.flightContext.blockFuel || 0);
 
   const handleFetch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,14 +102,14 @@ export default function ImportPage() {
     };
 
     try {
-      localStorage.setItem('activeFlight', JSON.stringify({
+      setFlightData({
         flightContext: updatedContext,
         warnings: importedData.warnings,
         raw: importedData.raw,
-      }));
-      setSuccess('Plano de voo importado e salvo localmente com sucesso!');
+      });
+      setSuccess('Plano de voo importado e salvo temporariamente em memória!');
     } catch {
-      setError('Erro ao salvar o plano de voo no armazenamento local.');
+      setError('Erro ao salvar o plano de voo na memória.');
     }
   };
 

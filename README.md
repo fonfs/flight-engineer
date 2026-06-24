@@ -23,7 +23,6 @@ packages/
 ### Prerequisites
 - Node.js LTS (>= 18.0.0)
 - pnpm (>= 9.0.0)
-- Docker Desktop (for local PostgreSQL database)
 
 ### Installation
 1. Clone the repository.
@@ -31,11 +30,7 @@ packages/
    ```bash
    cp .env.example .env
    ```
-3. Run the local PostgreSQL container:
-   ```bash
-   pnpm run db:up
-   ```
-4. Install dependencies:
+3. Install dependencies:
    ```bash
    pnpm install
    ```

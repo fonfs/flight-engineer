@@ -4,60 +4,28 @@ import React, { useState, useEffect } from 'react';
 import { parseAndNormalizeSimBrief } from '@classic-flight-engineer/simbrief-adapter';
 import { FlightContext } from '@classic-flight-engineer/aviation-domain';
 
-export default function DashboardPage() {
-  const mockSimbriefPayload = {
-    general: {
-      flight_number: '860',
-      icao_airline: 'VRG',
-      initial_altitude: '33000',
-      route: 'SBGL UZ6 VUGAX KJFK'
-    },
-    aircraft: {
-      icao_code: 'B742',
-      name: 'Boeing 747-200B',
-      engine_type: 'JT9D-7A',
-      reg: 'PP-VNA'
-    },
-    weights: {
-      est_zfw: '448000',
-      est_tow: '720000',
-      est_ldw: '530000',
-      payload: '68000'
-    },
-    fuel: {
-      plan_ramp: '282000',
-      taxi: '5000',
-      enroute_burn: '242000',
-      reserve: '35000'
-    },
-    origin: {
-      icao_code: 'SBGL',
-      elevation: '28'
-    },
-    destination: {
-      icao_code: 'KJFK',
-      elevation: '13'
-    }
-  };
+interface DashboardPageProps {
+  flightData: {
+    flightContext: FlightContext;
+    warnings: string[];
+    raw: any;
+  } | null;
+}
 
-  const defaultFlight = parseAndNormalizeSimBrief(mockSimbriefPayload).flightContext;
-  const [flightContext, setFlightContext] = useState<FlightContext>(defaultFlight);
-  const [dataRevision, setDataRevision] = useState('v1.0.0 (DEMO DATA)');
+export default function DashboardPage({ flightData }: DashboardPageProps) {
+  const flightContext = flightData?.flightContext;
+  const dataRevision = flightData ? 'v1.0.0 (IN-MEMORY DATA)' : 'NO FLIGHT DATA LOADED';
 
-  useEffect(() => {
-    const saved = localStorage.getItem('activeFlight');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed.flightContext) {
-          setFlightContext(parsed.flightContext);
-          setDataRevision('v1.0.0 (IMPORTED DATA)');
-        }
-      } catch (e) {
-        console.error('Failed to parse active flight from localStorage', e);
-      }
-    }
-  }, []);
+  if (!flightContext) {
+    return (
+      <main className="space-y-6 max-w-6xl">
+        <header className="border-b border-slate-800 pb-4">
+          <h1 className="text-3xl font-extrabold tracking-wider font-mono text-cyan-400">FLIGHT STATUS MONITOR</h1>
+          <p className="text-sm text-slate-400 mt-1">No flight operational plan has been loaded yet.</p>
+        </header>
+      </main>
+    );
+  }
 
   return (
     <main className="space-y-6 max-w-6xl">

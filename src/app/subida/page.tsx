@@ -2,12 +2,25 @@
 
 import React, { useState } from 'react';
 import { calculateISA } from '@classic-flight-engineer/performance-engine';
-import { asFeet, asCelsius } from '@classic-flight-engineer/aviation-domain';
+import { asFeet, asCelsius, FlightContext } from '@classic-flight-engineer/aviation-domain';
 
-export default function ClimbPlannerPage() {
+interface ClimbPlannerPageProps {
+  flightData: {
+    flightContext: FlightContext;
+    warnings: string[];
+    raw: any;
+  } | null;
+}
+
+export default function ClimbPlannerPage({ flightData }: ClimbPlannerPageProps) {
+  // Convert kg back to lbs for display weight if present in flight context, or use standard default
+  const defaultWeightLbs = flightData?.flightContext.takeoffWeight 
+    ? Math.round(flightData.flightContext.takeoffWeight * 2.20462)
+    : 650000;
+
   const [initAlt, setInitAlt] = useState(1000);
-  const [finalAlt, setFinalAlt] = useState(31000);
-  const [weight, setWeight] = useState(650000);
+  const [finalAlt, setFinalAlt] = useState(flightData?.flightContext.plannedCruiseAltitude || 31000);
+  const [weight, setWeight] = useState(defaultWeightLbs);
   const [tempOAT, setTempOAT] = useState(15);
   const [climbRate, setClimbRate] = useState(1500); // ft/min
   const [fuelBurnFlow, setFuelBurnFlow] = useState(24000); // lbs/hour

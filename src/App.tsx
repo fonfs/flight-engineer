@@ -8,19 +8,72 @@ import ConversorPage from './app/conversor/page';
 import AeronavesPage from './app/aeronaves/page';
 import FontesPage from './app/fontes/page';
 import ConfigPage from './app/config/page';
+import { FlightContext } from '@classic-flight-engineer/aviation-domain';
+import { parseAndNormalizeSimBrief } from '@classic-flight-engineer/simbrief-adapter';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
 
+  const mockSimbriefPayload = {
+    general: {
+      flight_number: '860',
+      icao_airline: 'VRG',
+      initial_altitude: '33000',
+      route: 'SBGL UZ6 VUGAX KJFK'
+    },
+    aircraft: {
+      icao_code: 'B742',
+      name: 'Boeing 747-200B',
+      engine_type: 'JT9D-7A',
+      reg: 'PP-VNA'
+    },
+    weights: {
+      est_zfw: '448000',
+      est_tow: '720000',
+      est_ldw: '530000',
+      payload: '68000'
+    },
+    fuel: {
+      plan_ramp: '282000',
+      taxi: '5000',
+      enroute_burn: '242000',
+      reserve: '35000'
+    },
+    origin: {
+      icao_code: 'SBGL',
+      elevation: '28'
+    },
+    destination: {
+      icao_code: 'KJFK',
+      elevation: '13'
+    }
+  };
+
+  const defaultFlight = parseAndNormalizeSimBrief(mockSimbriefPayload);
+  
+  const [flightData, setFlightData] = useState<{
+    flightContext: FlightContext;
+    warnings: string[];
+    raw: any;
+  } | null>({
+    flightContext: defaultFlight.flightContext,
+    warnings: defaultFlight.warnings,
+    raw: mockSimbriefPayload
+  });
+
+  const [prefUnits, setPrefUnits] = useState('lbs');
+  const [themeMode, setThemeMode] = useState('glass-dark');
+
   // Load and apply visual theme & read initial page from URL path
   useEffect(() => {
-    const savedTheme = localStorage.getItem('themeMode');
-    if (savedTheme === 'high-contrast') {
+    if (themeMode === 'high-contrast') {
       document.documentElement.classList.add('high-contrast');
     } else {
       document.documentElement.classList.remove('high-contrast');
     }
+  }, [themeMode]);
 
+  useEffect(() => {
     // Determine initial page from URL path
     const path = window.location.pathname.replace(/^\//, '');
     const validPages = ['dashboard', 'import', 'subida', 'perfil', 'atmosfera', 'conversor', 'aeronaves', 'fontes', 'config'];
@@ -37,13 +90,13 @@ export default function App() {
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard':
-        return <DashboardPage />;
+        return <DashboardPage flightData={flightData} />;
       case 'import':
-        return <ImportPage />;
+        return <ImportPage flightData={flightData} setFlightData={setFlightData} />;
       case 'subida':
-        return <ClimbPlannerPage />;
+        return <ClimbPlannerPage flightData={flightData} />;
       case 'perfil':
-        return <PerfilPage />;
+        return <PerfilPage flightData={flightData} />;
       case 'atmosfera':
         return <AtmosferaPage />;
       case 'conversor':
@@ -53,9 +106,16 @@ export default function App() {
       case 'fontes':
         return <FontesPage />;
       case 'config':
-        return <ConfigPage />;
+        return (
+          <ConfigPage 
+            prefUnits={prefUnits} 
+            setPrefUnits={setPrefUnits} 
+            themeMode={themeMode} 
+            setThemeMode={setThemeMode} 
+          />
+        );
       default:
-        return <DashboardPage />;
+        return <DashboardPage flightData={flightData} />;
     }
   };
 

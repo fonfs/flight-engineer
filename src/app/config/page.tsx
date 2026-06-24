@@ -1,38 +1,29 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
-export default function ConfigPage() {
-  const [prefUnits, setPrefUnits] = useState('lbs');
-  const [themeMode, setThemeMode] = useState('glass-dark');
+interface ConfigPageProps {
+  prefUnits: string;
+  setPrefUnits: (units: string) => void;
+  themeMode: string;
+  setThemeMode: (theme: string) => void;
+}
+
+export default function ConfigPage({
+  prefUnits,
+  setPrefUnits,
+  themeMode,
+  setThemeMode
+}: ConfigPageProps) {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-
-  // Load preferences from localStorage on mount
-  useEffect(() => {
-    const savedUnits = localStorage.getItem('prefUnits');
-    const savedTheme = localStorage.getItem('themeMode');
-    if (savedUnits) setPrefUnits(savedUnits);
-    if (savedTheme) setThemeMode(savedTheme);
-  }, []);
 
   const handleSave = async () => {
     setSaving(true);
     setStatus(null);
 
     try {
-      // Save to localStorage
-      localStorage.setItem('prefUnits', prefUnits);
-      localStorage.setItem('themeMode', themeMode);
-
-      // Apply theme class to document element
-      if (themeMode === 'high-contrast') {
-        document.documentElement.classList.add('high-contrast');
-      } else {
-        document.documentElement.classList.remove('high-contrast');
-      }
-
-      setStatus({ type: 'success', message: 'Configurações salvas localmente com sucesso!' });
+      setStatus({ type: 'success', message: 'Configurações aplicadas na sessão em memória!' });
     } catch (err: any) {
       setStatus({ type: 'error', message: err.message || 'Erro inesperado ao salvar as configurações.' });
     } finally {

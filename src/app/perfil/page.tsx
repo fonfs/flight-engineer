@@ -1,6 +1,14 @@
-import React from 'react';
+import { FlightContext } from '@classic-flight-engineer/aviation-domain';
 
-export default function PerfilPage() {
+interface PerfilPageProps {
+  flightData: {
+    flightContext: FlightContext;
+    warnings: string[];
+    raw: any;
+  } | null;
+}
+
+export default function PerfilPage({ flightData }: PerfilPageProps) {
   return (
     <main className="space-y-6 max-w-4xl">
       <header className="border-b border-slate-800 pb-4">

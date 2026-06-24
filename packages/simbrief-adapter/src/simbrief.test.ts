@@ -5,13 +5,14 @@ import fixture from './simbrief.fixture.json';
 describe('SimBrief Adapter normalization tests', () => {
   it('correctly maps the valid fixture to internal FlightContext', () => {
     const result = parseAndNormalizeSimBrief(fixture);
-    expect(result.warnings.length).toBe(0);
+    expect(result.warnings).toContain('SimBrief OFP uses LBS. Weights were normalized to KGS internally.');
     expect(result.flightContext.flightNumber).toBe('RG860');
     expect(result.flightContext.callsign).toBe('VRGRG860');
     expect(result.flightContext.origin).toBe('SBGL');
     expect(result.flightContext.destination).toBe('KJFK');
     expect(result.flightContext.alternate).toBe('KEWR');
-    expect(result.flightContext.zeroFuelWeight).toBe(448000); // Lbs
+    // 448000 Lbs / 2.20462 = 203209.62... kg
+    expect(result.flightContext.zeroFuelWeight).toBeCloseTo(203209.62, 1);
     expect(result.flightContext.plannedCruiseAltitude).toBe(33000); // Ft
     expect(result.flightContext.windData.length).toBe(1);
     expect(result.flightContext.windData[0].waypoint).toBe('VUGAX');
@@ -19,7 +20,7 @@ describe('SimBrief Adapter normalization tests', () => {
     expect(result.flightContext.windData[0].velocity).toBe(45);
   });
 
-  it('normalizes weights from KGS to LBS and generates warning', () => {
+  it('normalizes weights from KGS and generates no warning', () => {
     const kgsFixture = {
       ...fixture,
       params: { units: 'kgs' },
@@ -32,9 +33,8 @@ describe('SimBrief Adapter normalization tests', () => {
     };
 
     const result = parseAndNormalizeSimBrief(kgsFixture);
-    expect(result.warnings).toContain('SimBrief OFP uses KGS. Weights were normalized to LBS internally.');
-    // 200000 kg * 2.20462 = 440924 lbs
-    expect(result.flightContext.zeroFuelWeight).toBeCloseTo(440924, 0);
+    expect(result.warnings.length).toBe(0);
+    expect(result.flightContext.zeroFuelWeight).toBe(200000);
   });
 
   it('handles null alternate correctly', () => {

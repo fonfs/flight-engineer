@@ -2,11 +2,83 @@ import { z } from 'zod';
 
 // Environment variables schema
 export const envSchema = z.object({
-  DATABASE_URL: z.string().url().optional(),
   SIMBRIEF_API_URL: z.string().url().default('https://www.simbrief.com/api/xmlfeed.php'),
   PORT: z.string().transform(Number).default('3000'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 });
+
+// Performance Matrix Table Schema
+export const PerformanceTableSchema = z.object({
+  id: z.string().min(1),
+  version: z.string().min(1),
+  revision: z.string().min(1),
+  source: z.string().min(1),
+  sourceDate: z.string().min(1),
+  aircraft: z.string().min(1),
+  variant: z.string().min(1),
+  engine: z.string().min(1),
+  units: z.record(z.string()),
+  interpolation: z.enum(['linear', 'bilinear']),
+  extrapolationAllowed: z.boolean(),
+  axes: z.object({
+    rows: z.object({
+      name: z.string().min(1),
+      unit: z.string().min(1),
+      values: z.array(z.number().finite())
+    }),
+    columns: z.object({
+      name: z.string().min(1),
+      unit: z.string().min(1),
+      values: z.array(z.number().finite())
+    })
+  }),
+  result: z.object({
+    name: z.string().min(1),
+    unit: z.string().min(1)
+  }),
+  values: z.array(z.array(z.number().finite()))
+}).refine(data => {
+  const rowCount = data.axes.rows.values.length;
+  const colCount = data.axes.columns.values.length;
+  if (data.values.length !== rowCount) {
+    return false;
+  }
+  return data.values.every(row => row.length === colCount);
+}, {
+  message: "Values matrix dimensions must match axes dimensions (rows count and columns count)."
+});
+
+// Performance Vector Schema
+export const PerformanceVectorSchema = z.object({
+  id: z.string().min(1),
+  version: z.string().min(1),
+  revision: z.string().min(1),
+  source: z.string().min(1),
+  sourceDate: z.string().min(1),
+  aircraft: z.string().min(1),
+  variant: z.string().min(1),
+  engine: z.string().min(1),
+  units: z.record(z.string()),
+  interpolation: z.enum(['linear']),
+  extrapolationAllowed: z.boolean(),
+  axis: z.object({
+    name: z.string().min(1),
+    unit: z.string().min(1),
+    values: z.array(z.number().finite())
+  }),
+  result: z.object({
+    name: z.string().min(1),
+    unit: z.string().min(1)
+  }),
+  values: z.array(z.number().finite())
+}).refine(data => {
+  return data.values.length === data.axis.values.length;
+}, {
+  message: "Values length must match axis values length."
+});
+
+export type ValidatedPerformanceTable = z.infer<typeof PerformanceTableSchema>;
+export type ValidatedPerformanceVector = z.infer<typeof PerformanceVectorSchema>;
 
 // Domain primitives schemas
 export const poundsSchema = z.number().brand<'Pounds'>();

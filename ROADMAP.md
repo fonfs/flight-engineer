@@ -13,11 +13,10 @@ gantt
     Performance Engine (JT9D Math)  : 2026-07-04, 8d
     section Phase 3
     SimBrief Adapter & Validation  : 2026-07-12, 6d
-    PostgreSQL & Drizzle Schema     : 2026-07-18, 5d
     section Phase 4
-    Next.js UI & Dashboard Panel   : 2026-07-23, 10d
+    UI & Dashboard Panel (Stateless) : 2026-07-18, 10d
     section Phase 5
-    Vitest & Playwright E2E Testing : 2026-08-02, 6d
+    Vitest & Playwright E2E Testing : 2026-07-28, 6d
 ```
 
 ---
@@ -29,7 +28,6 @@ gantt
 - **Deliverables**:
   - `package.json` workspace config.
   - ESLint, Prettier, and root TypeScript base templates.
-  - Setup Docker Compose for PostgreSQL.
   - Setup Vitest base configurations.
 
 ### Phase 2: Aviation Domain & Performance Math (Core Logic)
@@ -43,17 +41,16 @@ gantt
     - Takeoff V-speed interpolations.
     - Cruise power configurations.
 
-### Phase 3: External Integration & Persistence
-- **Goal**: Standardize inputs from SimBrief and persist user states.
+### Phase 3: External Integration & Session Flow
+- **Goal**: Standardize inputs from SimBrief and validate data structures.
 - **Deliverables**:
   - `packages/simbrief-adapter` with XML/JSON normalization.
   - `packages/validation` input check rules using Zod schemas.
-  - Database schema definitions (flights, checksheets, waypoints) with Drizzle.
 
 ### Phase 4: Web Frontend & User Interface
 - **Goal**: Build the interactive glass cockpit dashboard.
 - **Deliverables**:
-  - `apps/web` Next.js frontend pages (App Router).
+  - `apps/web` React/Tailwind frontend pages.
   - `packages/ui` core panels (checklists, fuel visualizer, coordinate helper).
   - React Hook Form integrations with Tailwind styles.
 
