@@ -1,2 +1,2 @@
-export * from './isa.js';
-export * from './interpolation.js';
+export * from './isa';
+export * from './interpolation';

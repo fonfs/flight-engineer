@@ -5,16 +5,16 @@ import {
   ValidatedPerformanceVector 
 } from '@classic-flight-engineer/validation';
 
-import { aircraftMetadata } from './boeing-747-200/aircraft.js';
-import { variant747_200b } from './boeing-747-200/variants/747-200b.js';
-import { variant747_200f } from './boeing-747-200/variants/747-200f.js';
-import { jt9dMetadata } from './boeing-747-200/engines/jt9d/metadata.js';
-import { climbPerformanceTable } from './boeing-747-200/engines/jt9d/climb.js';
-import { takeoffPerformanceTable } from './boeing-747-200/engines/jt9d/takeoff.js';
-import { cruisePerformanceTable } from './boeing-747-200/engines/jt9d/cruise.js';
-import { descentPerformanceTable } from './boeing-747-200/engines/jt9d/descent.js';
-import { landingPerformanceTable } from './boeing-747-200/engines/jt9d/landing.js';
-import { speedSchedulesTable } from './boeing-747-200/engines/jt9d/speed-schedules.js';
+import { aircraftMetadata } from './boeing-747-200/aircraft';
+import { variant747_200b } from './boeing-747-200/variants/747-200b';
+import { variant747_200f } from './boeing-747-200/variants/747-200f';
+import { jt9dMetadata } from './boeing-747-200/engines/jt9d/metadata';
+import { climbPerformanceTable } from './boeing-747-200/engines/jt9d/climb';
+import { takeoffPerformanceTable } from './boeing-747-200/engines/jt9d/takeoff';
+import { cruisePerformanceTable } from './boeing-747-200/engines/jt9d/cruise';
+import { descentPerformanceTable } from './boeing-747-200/engines/jt9d/descent';
+import { landingPerformanceTable } from './boeing-747-200/engines/jt9d/landing';
+import { speedSchedulesTable } from './boeing-747-200/engines/jt9d/speed-schedules';
 
 // Perform structural Zod validation on load to fail early during build/dev
 const validatedClimb = PerformanceTableSchema.parse(climbPerformanceTable);

@@ -2,19 +2,10 @@
 
 import React, { useState } from 'react';
 
-interface ConfigPageProps {
-  prefUnits: string;
-  setPrefUnits: (units: string) => void;
-  themeMode: string;
-  setThemeMode: (theme: string) => void;
-}
+import { useApp } from '../../components/AppContext';
 
-export default function ConfigPage({
-  prefUnits,
-  setPrefUnits,
-  themeMode,
-  setThemeMode
-}: ConfigPageProps) {
+export default function ConfigPage() {
+  const { prefUnits, setPrefUnits, themeMode, setThemeMode } = useApp();
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 

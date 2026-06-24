@@ -1,2 +1,2 @@
-export * from './flight-context.js';
+export * from './flight-context';
 export * from '@classic-flight-engineer/unit-system';

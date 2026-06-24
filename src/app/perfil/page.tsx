@@ -1,14 +1,9 @@
-import { FlightContext } from '@classic-flight-engineer/aviation-domain';
+'use client';
 
-interface PerfilPageProps {
-  flightData: {
-    flightContext: FlightContext;
-    warnings: string[];
-    raw: any;
-  } | null;
-}
+import { useApp } from '../../components/AppContext';
 
-export default function PerfilPage({ flightData }: PerfilPageProps) {
+export default function PerfilPage() {
+  const { flightData } = useApp();
   return (
     <main className="space-y-6 max-w-4xl">
       <header className="border-b border-slate-800 pb-4">

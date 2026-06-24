@@ -2,17 +2,11 @@
 
 import React, { useState } from 'react';
 import { calculateISA } from '@classic-flight-engineer/performance-engine';
-import { asFeet, asCelsius, FlightContext } from '@classic-flight-engineer/aviation-domain';
+import { useApp } from '../../components/AppContext';
+import { asFeet, asCelsius } from '@classic-flight-engineer/aviation-domain';
 
-interface ClimbPlannerPageProps {
-  flightData: {
-    flightContext: FlightContext;
-    warnings: string[];
-    raw: any;
-  } | null;
-}
-
-export default function ClimbPlannerPage({ flightData }: ClimbPlannerPageProps) {
+export default function ClimbPlannerPage() {
+  const { flightData } = useApp();
   // Convert kg back to lbs for display weight if present in flight context, or use standard default
   const defaultWeightLbs = flightData?.flightContext.takeoffWeight 
     ? Math.round(flightData.flightContext.takeoffWeight * 2.20462)

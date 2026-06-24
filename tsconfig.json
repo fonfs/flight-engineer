@@ -2,36 +2,66 @@
   "compilerOptions": {
     "target": "ES2022",
     "useDefineForClassFields": true,
-    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ES2022"
+    ],
     "module": "ESNext",
     "skipLibCheck": true,
-
     /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx",
-
+    "jsx": "preserve",
     /* Linting */
     "strict": true,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
-
     /* Path Aliases */
     "baseUrl": ".",
     "paths": {
-      "@classic-flight-engineer/aircraft-data": ["./packages/aircraft-data/src/index.ts"],
-      "@classic-flight-engineer/aviation-domain": ["./packages/aviation-domain/src/index.ts"],
-      "@classic-flight-engineer/performance-engine": ["./packages/performance-engine/src/index.ts"],
-      "@classic-flight-engineer/simbrief-adapter": ["./packages/simbrief-adapter/src/index.ts"],
-      "@classic-flight-engineer/ui": ["./packages/ui/src/index.ts"],
-      "@classic-flight-engineer/unit-system": ["./packages/unit-system/src/index.ts"],
-      "@classic-flight-engineer/validation": ["./packages/validation/src/index.ts"]
-    }
+      "@classic-flight-engineer/aircraft-data": [
+        "./packages/aircraft-data/src/index.ts"
+      ],
+      "@classic-flight-engineer/aviation-domain": [
+        "./packages/aviation-domain/src/index.ts"
+      ],
+      "@classic-flight-engineer/performance-engine": [
+        "./packages/performance-engine/src/index.ts"
+      ],
+      "@classic-flight-engineer/simbrief-adapter": [
+        "./packages/simbrief-adapter/src/index.ts"
+      ],
+      "@classic-flight-engineer/ui": [
+        "./packages/ui/src/index.ts"
+      ],
+      "@classic-flight-engineer/unit-system": [
+        "./packages/unit-system/src/index.ts"
+      ],
+      "@classic-flight-engineer/validation": [
+        "./packages/validation/src/index.ts"
+      ]
+    },
+    "allowJs": true,
+    "incremental": true,
+    "esModuleInterop": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
   },
-  "include": ["src", "packages/*/src"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "src",
+    "packages/*/src",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }

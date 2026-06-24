@@ -1,89 +1,105 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { parseAndNormalizeSimBrief } from '@classic-flight-engineer/simbrief-adapter';
-import { FlightContext } from '@classic-flight-engineer/aviation-domain';
+import React from 'react';
+import Link from 'next/link';
+import { useApp } from '../components/AppContext';
 
-interface DashboardPageProps {
-  flightData: {
-    flightContext: FlightContext;
-    warnings: string[];
-    raw: any;
-  } | null;
-}
-
-export default function DashboardPage({ flightData }: DashboardPageProps) {
+export default function DashboardPage() {
+  const { flightData } = useApp();
   const flightContext = flightData?.flightContext;
-  const dataRevision = flightData ? 'v1.0.0 (IN-MEMORY DATA)' : 'NO FLIGHT DATA LOADED';
-
-  if (!flightContext) {
-    return (
-      <main className="space-y-6 max-w-6xl">
-        <header className="border-b border-slate-800 pb-4">
-          <h1 className="text-3xl font-extrabold tracking-wider font-mono text-cyan-400">FLIGHT STATUS MONITOR</h1>
-          <p className="text-sm text-slate-400 mt-1">No flight operational plan has been loaded yet.</p>
-        </header>
-      </main>
-    );
-  }
 
   return (
-    <main className="space-y-6 max-w-6xl">
-      <header className="border-b border-slate-800 pb-4 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-wider font-mono text-cyan-400">FLIGHT STATUS MONITOR</h1>
-          <p className="text-sm text-slate-400 mt-1">Overview of currently loaded operation.</p>
-        </div>
-        <div className="bg-slate-900 border border-slate-800 px-4 py-2 rounded text-right font-mono text-xs">
-          <span className="text-slate-500 block">DATA PACKAGE REVISION</span>
-          <span className="text-amber-400 font-bold">{dataRevision}</span>
+    <main className="space-y-12 max-w-5xl mx-auto py-6">
+      {/* Hero Welcome Panel */}
+      <header className="relative bg-slate-900/40 border border-slate-800 p-8 rounded-2xl backdrop-blur-md overflow-hidden glow-cyan">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/5 rounded-full blur-[100px] pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-emerald-500/5 rounded-full blur-[100px] pointer-events-none"></div>
+
+        <div className="relative space-y-6 max-w-2xl">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-cyan-950/40 border border-cyan-800/40 rounded-full text-xs font-mono text-cyan-400">
+            <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse shadow-[0_0_8px_#10b981]"></span>
+            SISTEMA INTEGRADO DE FLIGHT ENGINEERING
+          </div>
+          
+          <h1 className="text-4xl md:text-5xl font-black font-mono tracking-wider bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400 bg-clip-text text-transparent leading-tight">
+            CLASSIC FLIGHT ENGINEER
+          </h1>
+          
+          <p className="text-slate-400 text-base md:text-lg font-sans leading-relaxed">
+            Painel digital de precisão projetado para simulação de voo do Boeing 747-200. Calcule velocidades, gradientes de subida, desvios ISA e queima de combustível sem qualquer persistência ou registro de dados no servidor.
+          </p>
+
+          <div className="pt-2 flex flex-wrap gap-4">
+            <Link 
+              href="/import" 
+              className="px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-black font-extrabold rounded-lg font-mono transition-all transform hover:-translate-y-0.5 shadow-lg shadow-cyan-500/10"
+            >
+              🚀 IMPORTAR PLANO DE VOO
+            </Link>
+            <Link 
+              href="/subida" 
+              className="px-6 py-3 bg-slate-900 border border-slate-800 hover:border-cyan-500/50 text-cyan-400 rounded-lg font-mono transition-all transform hover:-translate-y-0.5"
+            >
+              ↗ PLANEJAR SUBIDA
+            </Link>
+          </div>
         </div>
       </header>
 
-      {/* Grid containing flight specs */}
+      {/* Feature Cards Grid */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="card-panel glow-cyan">
-          <h3 className="text-sm font-bold text-cyan-400 font-mono border-b border-slate-800 pb-2">✈ FLIGHT IDENTITY</h3>
-          <div className="space-y-2 font-mono text-sm pt-2">
-            <div className="flex justify-between"><span className="text-slate-500">Callsign:</span><span>{flightContext.callsign}</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Flight No:</span><span>{flightContext.flightNumber}</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Routing:</span><span>{flightContext.origin} → {flightContext.destination}</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Aircraft:</span><span>{flightContext.aircraftVariant}</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Engine:</span><span>{flightContext.engineVariant}</span></div>
-          </div>
+        <div className="bg-slate-900/20 border border-slate-800/80 p-6 rounded-xl hover:border-cyan-900/60 transition-all hover:bg-slate-900/40 group">
+          <span className="text-3xl block mb-4 group-hover:scale-110 transition-transform">✈</span>
+          <h3 className="text-base font-bold font-mono text-cyan-400 mb-2">Monitoramento de Voo</h3>
+          <p className="text-slate-500 text-xs leading-relaxed">
+            {flightContext ? (
+              <span className="text-emerald-400 font-bold font-mono">
+                Ativo: {flightContext.callsign} ({flightContext.origin} &rarr; {flightContext.destination})
+              </span>
+            ) : (
+              "Nenhum voo carregado. Importe um plano do SimBrief para visualizar perfis de peso e combustível."
+            )}
+          </p>
+          {flightContext && (
+            <Link href="/import" className="inline-block mt-4 text-xs font-mono text-cyan-500 hover:text-cyan-400">
+              Ver Detalhes &rarr;
+            </Link>
+          )}
         </div>
 
-        <div className="card-panel glow-cyan">
-          <h3 className="text-sm font-bold text-cyan-400 font-mono border-b border-slate-800 pb-2">⚖ LOAD PROFILE</h3>
-          <div className="space-y-2 font-mono text-sm pt-2">
-            <div className="flex justify-between"><span className="text-slate-500">Zero Fuel Wt:</span><span>{flightContext.zeroFuelWeight} kg</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Takeoff Wt:</span><span>{flightContext.takeoffWeight} kg</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Landing Wt:</span><span>{flightContext.landingWeight} kg</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Payload Wt:</span><span>{flightContext.payload} kg</span></div>
-          </div>
+        <div className="bg-slate-900/20 border border-slate-800/80 p-6 rounded-xl hover:border-cyan-900/60 transition-all hover:bg-slate-900/40 group">
+          <span className="text-3xl block mb-4 group-hover:scale-110 transition-transform">📈</span>
+          <h3 className="text-base font-bold font-mono text-cyan-400 mb-2">Perfil Vertical</h3>
+          <p className="text-slate-500 text-xs leading-relaxed">
+            Gere diagramas de trajetória e altitude do voo em tempo real de acordo com as restrições inseridas e meteorologia.
+          </p>
+          <Link href="/perfil" className="inline-block mt-4 text-xs font-mono text-cyan-500 hover:text-cyan-400">
+            Ir para Perfil &rarr;
+          </Link>
         </div>
 
-        <div className="card-panel glow-cyan">
-          <h3 className="text-sm font-bold text-cyan-400 font-mono border-b border-slate-800 pb-2">⛽ FUEL QUANTITY</h3>
-          <div className="space-y-2 font-mono text-sm pt-2">
-            <div className="flex justify-between"><span className="text-slate-500">Block Fuel:</span><span>{flightContext.blockFuel} kg</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Trip Burn:</span><span>{flightContext.tripFuel} kg</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Reserve Fuel:</span><span>{flightContext.reserveFuel} kg</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Taxi Out/In:</span><span>{flightContext.taxiFuel} kg</span></div>
-          </div>
+        <div className="bg-slate-900/20 border border-slate-800/80 p-6 rounded-xl hover:border-cyan-900/60 transition-all hover:bg-slate-900/40 group">
+          <span className="text-3xl block mb-4 group-hover:scale-110 transition-transform">🌡</span>
+          <h3 className="text-base font-bold font-mono text-cyan-400 mb-2">Cálculos Atmosféricos</h3>
+          <p className="text-slate-500 text-xs leading-relaxed">
+            Monitore a atmosfera padrão ISA, velocidades reais de ar e pressões QNH necessárias para a pilotagem do B742.
+          </p>
+          <Link href="/atmosfera" className="inline-block mt-4 text-xs font-mono text-cyan-500 hover:text-cyan-400">
+            Calcular ISA &rarr;
+          </Link>
         </div>
       </section>
 
-      {/* Warnings & Tools status card */}
-      <section className="card-panel">
-        <h3 className="text-sm font-bold text-cyan-400 font-mono border-b border-slate-800 pb-2">SYSTEM WARNINGS & CHECK STATUS</h3>
-        <div className="p-4 bg-amber-950/20 border border-amber-800/40 rounded flex items-start gap-4">
-          <span className="text-2xl text-amber-500 font-mono">⚠️</span>
-          <div className="font-mono text-xs text-amber-400 space-y-1">
-            <span className="font-bold block">DEMONSTRATION MODE ACTIVE</span>
-            <span>Performance calculations utilize uncertified demonstration data. Extrapolation is blocked across all math interpolations.</span>
-          </div>
-        </div>
+      {/* Decorative Interactive Graphic */}
+      <section className="bg-slate-950 border border-slate-900 rounded-xl p-8 flex flex-col items-center justify-center text-center space-y-4">
+        <span className="text-xs font-mono text-slate-600 block">SYSTEM STATUS: SESSION CACHE OK // NO SERVER LOGS RECORDED</span>
+        <svg viewBox="0 0 400 120" className="w-full max-w-md opacity-25 hover:opacity-45 transition-opacity">
+          <line x1="10" y1="60" x2="390" y2="60" stroke="#0891b2" strokeWidth="1" strokeDasharray="3 3" />
+          <circle cx="200" cy="60" r="30" fill="none" stroke="#0891b2" strokeWidth="1.5" />
+          <path d="M 120 60 L 150 40 L 250 80 L 280 60" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" />
+          <circle cx="120" cy="60" r="4" fill="#0891b2" />
+          <circle cx="280" cy="60" r="4" fill="#f59e0b" />
+        </svg>
       </section>
     </main>
   );
