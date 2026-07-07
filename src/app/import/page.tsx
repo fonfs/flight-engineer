@@ -473,7 +473,7 @@ const RouteMap = ({ fixes, alternateFixes = [], units }: { fixes: any[]; alterna
       attribution: '&copy; <a href="http://www.maptilesapi.com/">MapTiles API</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       apikey: 'eb06d654aemshb0b7dc06b51f1f0p1896a9jsn3b989223c526',
       maxZoom: 19
-    });
+    } as any);
 
     const satelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
       attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
@@ -490,14 +490,14 @@ const RouteMap = ({ fixes, alternateFixes = [], units }: { fixes: any[]; alterna
       maxZoom: 20,
       attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       ext: 'png'
-    });
+    } as any);
 
     const stadiaDark = L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.{ext}', {
       minZoom: 0,
       maxZoom: 20,
       attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       ext: 'png'
-    });
+    } as any);
 
     const voyager = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
@@ -510,21 +510,21 @@ const RouteMap = ({ fixes, alternateFixes = [], units }: { fixes: any[]; alterna
       maxZoom: 20,
       attribution: '&copy; CNES, Distribution Airbus DS, © Airbus DS, © PlanetObserver (Contains Copernicus Data) | &copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       ext: 'jpg'
-    });
+    } as any);
 
     const stadiaOSM = L.tileLayer('https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}{r}.{ext}', {
       minZoom: 0,
       maxZoom: 20,
       attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       ext: 'png'
-    });
+    } as any);
 
     const stadiaToner = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_lite/{z}/{x}/{y}{r}.{ext}', {
       minZoom: 0,
       maxZoom: 20,
       attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       ext: 'png'
-    });
+    } as any);
 
     // Add 'claro' layer by default
     claro.addTo(map);
@@ -1149,12 +1149,13 @@ const FuelRemainingChart = ({ fixes, alternateFixes = [], units, planRamp = 0 }:
     return {
       name: ident,
       Fuel: fuelKg,
+      AlternateFuel: undefined as number | undefined,
       ETE: formatEteSeconds(timeSeconds),
       isAlternate: false
     };
   });
 
-  let data = [...mainPoints];
+  let data: { name: any; Fuel: number | undefined; AlternateFuel: number | undefined; ETE: string; isAlternate: boolean }[] = [...mainPoints];
 
   if (alternateFixes.length > 0) {
     if (data.length > 0) {
@@ -1181,6 +1182,7 @@ const FuelRemainingChart = ({ fixes, alternateFixes = [], units, planRamp = 0 }:
 
       return {
         name: ident,
+        Fuel: undefined as number | undefined,
         AlternateFuel: fuelKg,
         ETE: formatEteSeconds(totalTime),
         isAlternate: true
@@ -1307,7 +1309,7 @@ export default function ImportPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [ofpFilter, setOfpFilter] = useState('');
-  const [activeTab, setActiveTab] = useState<'general' | 'performance' | 'flight' | 'route' | 'map' | 'ofp' | 'raw'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'performance' | 'flight' | 'route' | 'map' | 'ofp' | 'raw' | 'images'>('general');
 
   const [importedData, setImportedData] = useState<{
     flightContext: FlightContext;
