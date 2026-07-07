@@ -9,5 +9,5 @@ For AI assistants modifying the Classic Flight Engineer codebase:
 
 ## 2. Code Quality
 - Enforce strict typing.
-- Run `pnpm run lint` and `pnpm run typecheck` after every logical block modification to verify boundary safety.
+- Run `npm run lint` and `npm run typecheck` after every logical block modification to verify boundary safety.
 - Write unit tests in Vitest inside the corresponding `*.test.ts` files adjacent to calculation modules.

@@ -57,11 +57,11 @@
   },
   "include": [
     "src",
-    "packages/*/src",
-    ".next/types/**/*.ts"
+    "packages/*/src"
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    ".next"
   ]
 }

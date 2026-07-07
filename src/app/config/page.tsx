@@ -14,9 +14,9 @@ export default function ConfigPage() {
     setStatus(null);
 
     try {
-      setStatus({ type: 'success', message: 'Configurações aplicadas na sessão em memória!' });
+      setStatus({ type: 'success', message: 'Settings applied to the current in-memory session!' });
     } catch (err: any) {
-      setStatus({ type: 'error', message: err.message || 'Erro inesperado ao salvar as configurações.' });
+      setStatus({ type: 'error', message: err.message || 'Unexpected error while saving settings.' });
     } finally {
       setSaving(false);
     }
@@ -76,7 +76,7 @@ export default function ConfigPage() {
             disabled={saving}
             className="w-full bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-800 text-black font-extrabold py-2 px-4 rounded font-mono transition-colors"
           >
-            {saving ? 'SALVANDO...' : 'SAVE PREFERENCES'}
+            {saving ? 'SAVING...' : 'SAVE PREFERENCES'}
           </button>
         </div>
       </div>

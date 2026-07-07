@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { FlightContext } from '@classic-flight-engineer/aviation-domain';
 import { parseAndNormalizeSimBrief } from '@classic-flight-engineer/simbrief-adapter';
 
+
 interface AppContextType {
   flightData: {
     flightContext: FlightContext;

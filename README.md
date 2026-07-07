@@ -1,12 +1,13 @@
 # Classic Flight Engineer
 
-A professional-grade monorepo system designed to assist virtual pilots in operating classic aircraft in flight simulators. The target architecture supports multiple aircraft types, variants, and engine configurations, beginning with the **Boeing 747-200**.
+A professional-grade system designed to assist virtual pilots in operating classic aircraft in flight simulators. The target architecture supports multiple aircraft types, variants, and engine configurations, beginning with the **Boeing 747-200**.
 
 ## Project Architecture
 
 ```
-apps/
-  web/                  # Next.js App Router & API routes
+src/
+  app/                  # Next.js App Router & API routes
+  components/           # Shared React UI components & Contexts
 
 packages/
   aviation-domain/      # Normalized, strictly typed domain schemas and entities
@@ -22,7 +23,7 @@ packages/
 
 ### Prerequisites
 - Node.js LTS (>= 18.0.0)
-- pnpm (>= 9.0.0)
+- npm (>= 10.0.0) or pnpm (>= 9.0.0)
 
 ### Installation
 1. Clone the repository.
@@ -32,12 +33,11 @@ packages/
    ```
 3. Install dependencies:
    ```bash
-   pnpm install
+   npm install
    ```
 
 ### Execution Scripts
-- **Start Dev Server**: `pnpm run dev`
-- **Build All**: `pnpm run build`
-- **Lint Code**: `pnpm run lint`
-- **Typecheck**: `pnpm run typecheck`
-- **Run Unit Tests**: `pnpm run test`
+- **Start Dev Server**: `npm run dev`
+- **Build Project**: `npm run build`
+- **Typecheck**: `npm run typecheck`
+- **Run Unit Tests**: `npm run test`
