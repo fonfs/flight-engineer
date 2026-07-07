@@ -13,14 +13,14 @@ export default function AtmosferaPage() {
 
   return (
     <main className="space-y-6 max-w-4xl">
-      <header className="border-b border-slate-800 pb-4">
-        <h1 className="text-3xl font-extrabold tracking-wider font-mono text-cyan-400">ATMOSPHERE CALCULATOR // ISA</h1>
-        <p className="text-sm text-slate-400 mt-1">International Standard Atmosphere temperature, pressure, and sound speed ratios.</p>
+      <header className="border-b border-slate-200 pb-4">
+        <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 font-sans">ATMOSPHERE CALCULATOR // ISA</h1>
+        <p className="text-sm text-slate-500 mt-1 font-medium">International Standard Atmosphere temperature, pressure, and sound speed ratios.</p>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="card-panel">
-          <h3 className="text-sm font-bold text-cyan-400 font-mono border-b border-slate-800 pb-2">INPUT PARAMETERS</h3>
+          <h3 className="text-sm font-bold text-indigo-600 font-sans border-b border-slate-100 pb-2 uppercase tracking-wide">INPUT PARAMETERS</h3>
           <div className="space-y-4 pt-2">
             <div className="space-y-1">
               <label htmlFor="input-alt">Altitude (ft)</label>
@@ -46,25 +46,25 @@ export default function AtmosferaPage() {
         </div>
 
         <div className="card-panel glow-cyan">
-          <h3 className="text-sm font-bold text-cyan-400 font-mono border-b border-slate-800 pb-2">ISA OUTPUTS</h3>
+          <h3 className="text-sm font-bold text-indigo-600 font-sans border-b border-slate-100 pb-2 uppercase tracking-wide">ISA OUTPUTS</h3>
           <div className="space-y-3 font-mono text-sm pt-2">
             <div className="flex justify-between">
-              <span className="text-slate-500">Standard Temperature:</span>
-              <span>{isaData.standardTempC.toFixed(1)} °C</span>
+              <span className="text-slate-500 font-sans">Standard Temperature:</span>
+              <span className="font-bold text-slate-900">{isaData.standardTempC.toFixed(1)} °C</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">Lapse Deviation (ISA Delta):</span>
-              <span className={isaData.deltaTempC > 0 ? 'text-amber-400' : 'text-cyan-400'}>
+              <span className="text-slate-500 font-sans">Lapse Deviation (ISA Delta):</span>
+              <span className={`font-bold ${isaData.deltaTempC > 0 ? 'text-amber-600' : 'text-indigo-600'}`}>
                 {isaData.deltaTempC > 0 ? `+${isaData.deltaTempC.toFixed(1)}` : isaData.deltaTempC.toFixed(1)} °C
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">Atmospheric Pressure:</span>
-              <span>{isaData.pressureHpa.toFixed(1)} hPa</span>
+              <span className="text-slate-500 font-sans">Atmospheric Pressure:</span>
+              <span className="font-bold text-slate-900">{isaData.pressureHpa.toFixed(1)} hPa</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">Speed of Sound:</span>
-              <span>{soundSpeed.toFixed(1)} kts</span>
+              <span className="text-slate-500 font-sans">Speed of Sound:</span>
+              <span className="font-bold text-slate-900">{soundSpeed.toFixed(1)} kts</span>
             </div>
           </div>
         </div>

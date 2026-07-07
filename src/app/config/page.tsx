@@ -24,13 +24,13 @@ export default function ConfigPage() {
 
   return (
     <main className="space-y-6 max-w-4xl">
-      <header className="border-b border-slate-800 pb-4">
-        <h1 className="text-3xl font-extrabold tracking-wider font-mono text-cyan-400">USER SETTINGS</h1>
-        <p className="text-sm text-slate-400 mt-1">Configure your default units, client credentials, and display themes.</p>
+      <header className="border-b border-slate-200 pb-4">
+        <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 font-sans">USER SETTINGS</h1>
+        <p className="text-sm text-slate-500 mt-1 font-medium">Configure your default units, client credentials, and display themes.</p>
       </header>
 
       <div className="card-panel max-w-2xl">
-        <h3 className="text-sm font-bold text-cyan-400 font-mono border-b border-slate-800 pb-2">PREFERENCES</h3>
+        <h3 className="text-sm font-bold text-indigo-600 font-sans border-b border-slate-100 pb-2 uppercase tracking-wide">PREFERENCES</h3>
         
         <div className="space-y-4 pt-2">
           <div className="space-y-1">
@@ -54,17 +54,17 @@ export default function ConfigPage() {
               value={themeMode}
               onChange={(e) => setThemeMode(e.target.value)}
             >
-              <option value="glass-dark">Standard HUD (Glass Dark)</option>
+              <option value="glass-dark">Standard Light Mode</option>
               <option value="high-contrast">High Contrast (Technical)</option>
             </select>
           </div>
 
           {status && (
             <div
-              className={`p-3 rounded text-sm font-mono border ${
+              className={`p-3 rounded-xl text-sm font-sans font-medium border ${
                 status.type === 'success'
-                  ? 'bg-emerald-950/60 border-emerald-800/80 text-emerald-400'
-                  : 'bg-red-950/60 border-red-800/80 text-red-400'
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                  : 'bg-red-50 border-red-200 text-red-800'
               }`}
             >
               [{status.type.toUpperCase()}] {status.message}
@@ -74,7 +74,7 @@ export default function ConfigPage() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="w-full bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-800 text-black font-extrabold py-2 px-4 rounded font-mono transition-colors"
+            className="w-full bg-indigo-600 hover:bg-indigo-750 disabled:bg-slate-100 text-white font-extrabold py-2.5 px-4 rounded-xl font-sans tracking-wide transition-all shadow-md cursor-pointer uppercase h-[46px]"
           >
             {saving ? 'SAVING...' : 'SAVE PREFERENCES'}
           </button>

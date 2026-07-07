@@ -20,26 +20,26 @@ export default function AeronavesPage() {
 
   return (
     <main className="space-y-6 max-w-5xl">
-      <header className="border-b border-slate-800 pb-4">
-        <h1 className="text-3xl font-extrabold tracking-wider font-mono text-cyan-400">AIRCRAFT & ENGINES CONFIG</h1>
-        <p className="text-sm text-slate-400 mt-1">Configured airframe models, variants, and engine types.</p>
+      <header className="border-b border-slate-200 pb-4">
+        <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 font-sans">AIRCRAFT & ENGINES CONFIG</h1>
+        <p className="text-sm text-slate-500 mt-1 font-medium">Configured airframe models, variants, and engine types.</p>
       </header>
 
       <div className="space-y-6">
         {models.map((m, idx) => (
           <div key={idx} className="card-panel">
-            <h3 className="text-lg font-bold text-cyan-400 font-mono border-b border-slate-800 pb-2">{m.variant}</h3>
+            <h3 className="text-base font-bold text-indigo-600 font-sans border-b border-slate-100 pb-2">{m.variant}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-              <div className="space-y-2 font-mono text-sm">
-                <div className="flex justify-between"><span className="text-slate-500">Max Takeoff Weight:</span><span>{m.mtow}</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">Max Landing Weight:</span><span>{m.mlw}</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">Max Payload Weight:</span><span>{m.payload}</span></div>
+              <div className="space-y-2 font-mono text-sm text-slate-800">
+                <div className="flex justify-between"><span className="text-slate-500">Max Takeoff Weight:</span><span className="font-bold text-slate-950">{m.mtow}</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">Max Landing Weight:</span><span className="font-bold text-slate-950">{m.mlw}</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">Max Payload Weight:</span><span className="font-bold text-slate-950">{m.payload}</span></div>
               </div>
               <div className="space-y-2">
-                <span className="text-xs font-bold text-slate-400 block font-mono">SUPPORTED ENGINE CONFIGURATIONS</span>
-                <ul className="list-disc pl-5 font-mono text-sm text-slate-300 space-y-1">
+                <span className="text-xs font-bold text-slate-500 block font-sans tracking-wider uppercase">SUPPORTED ENGINE CONFIGURATIONS</span>
+                <ul className="list-disc pl-5 font-sans text-sm text-slate-700 space-y-1">
                   {m.engines.map((e, eIdx) => (
-                    <li key={eIdx}>{e}</li>
+                    <li key={eIdx} className="font-medium">{e}</li>
                   ))}
                 </ul>
               </div>

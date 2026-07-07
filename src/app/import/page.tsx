@@ -3,8 +3,8 @@ import { FlightContext } from '@classic-flight-engineer/aviation-domain';
 import { parseAndNormalizeSimBrief } from '@classic-flight-engineer/simbrief-adapter';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { ClipboardList, Scale, Plane, Compass, Map, FileText, Image, Braces, User, DownloadCloud, Cloud } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { ClipboardList, Scale, Plane, Compass, Map, FileText, Image, Braces, User, DownloadCloud, Cloud, CheckCircle2, AlertCircle, Clock, Globe, Settings, Anchor } from 'lucide-react';
 
 // @ts-ignore
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -1084,7 +1084,7 @@ const parseDewPointFromMetar = (metar: string): string => {
   return 'N/A';
 };
 
-const FuelRemainingChart = ({ fixes, alternateFixes = [], units }: { fixes: any[]; alternateFixes?: any[]; units: string }) => {
+const FuelRemainingChart = ({ fixes, alternateFixes = [], units, planRamp = 0 }: { fixes: any[]; alternateFixes?: any[]; units: string; planRamp?: number }) => {
   if (!fixes || fixes.length === 0) return null;
 
   const parseFixTimeSeconds = (fix: any): number => {
@@ -1191,7 +1191,7 @@ const FuelRemainingChart = ({ fixes, alternateFixes = [], units }: { fixes: any[
   }
 
   const fuels = data.map(d => d.Fuel || d.AlternateFuel || 0);
-  const maxFuel = Math.max(...fuels, 30000);
+  const maxFuel = planRamp > 0 ? planRamp : Math.max(...fuels);
 
   const formatFuelLabel = (val: number) => {
     return val.toLocaleString('en-US');
@@ -1379,31 +1379,13 @@ export default function ImportPage() {
   };
 
   return (
-    <main className="p-8 max-w-[1600px] mx-auto space-y-6">
-      <style dangerouslySetInnerHTML={{ __html: `
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 8px;
-          height: 8px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: #f8fafc;
-          border-radius: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #cbd5e1;
-          border-radius: 4px;
-          border: 2px solid #f8fafc;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #94a3b8;
-        }
-      `}} />
+    <div className="space-y-6 w-full">
       <header className="pb-2 flex items-center gap-3">
         <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-100/80 shadow-sm shrink-0">
           <Cloud className="w-6 h-6" />
         </div>
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight font-sans">
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight font-sans uppercase">
             SimBrief Import
           </h1>
           <p className="text-slate-500 font-medium text-xs mt-0.5">Enter your SimBrief credentials to sync the latest operational flight plan.</p>
@@ -1460,13 +1442,25 @@ export default function ImportPage() {
         </form>
 
         {error && (
-          <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm font-sans font-medium">
-            [FAILED] {error}
+          <div className="mt-4 p-4 pl-5 bg-rose-50/40 border border-rose-100/80 border-l-4 border-l-rose-500 rounded-xl flex items-center gap-4 shadow-sm transition-all duration-200 hover:shadow-md">
+            <div className="w-8 h-8 bg-rose-100/70 text-rose-600 rounded-lg flex items-center justify-center shrink-0">
+              <AlertCircle className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <span className="font-extrabold text-rose-900 text-xs tracking-wider block uppercase font-sans leading-none">Sync Failed</span>
+              <span className="text-rose-700 text-xs font-semibold block leading-tight">{error}</span>
+            </div>
           </div>
         )}
         {success && (
-          <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-sans font-medium">
-            [SUCCESS] {success}
+          <div className="mt-4 p-4 pl-5 bg-emerald-50/40 border border-emerald-100/80 border-l-4 border-l-emerald-500 rounded-xl flex items-center gap-4 shadow-sm transition-all duration-200 hover:shadow-md">
+            <div className="w-8 h-8 bg-emerald-100/70 text-emerald-600 rounded-lg flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <span className="font-extrabold text-emerald-900 text-xs tracking-wider block uppercase font-sans leading-none">Flight Plan Synced</span>
+              <span className="text-emerald-700 text-xs font-semibold block leading-tight">{success}</span>
+            </div>
           </div>
         )}
       </section>
@@ -1481,9 +1475,8 @@ export default function ImportPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab('general')}
-                className={`flex-1 py-3 px-3 text-center font-bold transition-all border-b-2 hover:bg-slate-100/50 flex items-center justify-center gap-1.5 ${
-                  activeTab === 'general' ? 'border-indigo-650 text-indigo-600 bg-white font-extrabold' : 'border-transparent text-slate-500'
-                }`}
+                className={`flex-1 py-3 px-3 text-center font-bold transition-all border-b-2 hover:bg-slate-100/50 flex items-center justify-center gap-1.5 ${activeTab === 'general' ? 'border-indigo-650 text-indigo-600 bg-white font-extrabold' : 'border-transparent text-slate-500'
+                  }`}
               >
                 <ClipboardList className="w-4 h-4" />
                 <span>GENERAL DATA</span>
@@ -1491,19 +1484,17 @@ export default function ImportPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab('performance')}
-                className={`flex-1 py-3 px-3 text-center font-bold transition-all border-b-2 hover:bg-slate-100/50 flex items-center justify-center gap-1.5 ${
-                  activeTab === 'performance' ? 'border-indigo-650 text-indigo-600 bg-white font-extrabold' : 'border-transparent text-slate-500'
-                }`}
+                className={`flex-1 py-3 px-3 text-center font-bold transition-all border-b-2 hover:bg-slate-100/50 flex items-center justify-center gap-1.5 ${activeTab === 'performance' ? 'border-indigo-650 text-indigo-600 bg-white font-extrabold' : 'border-transparent text-slate-500'
+                  }`}
               >
                 <Scale className="w-4 h-4" />
-                <span>PERFORMANCE & WEIGHTS</span>
+                <span>PERF & WEIGHTS</span>
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('flight')}
-                className={`flex-1 py-3 px-3 text-center font-bold transition-all border-b-2 hover:bg-slate-100/50 flex items-center justify-center gap-1.5 ${
-                  activeTab === 'flight' ? 'border-indigo-650 text-indigo-600 bg-white font-extrabold' : 'border-transparent text-slate-500'
-                }`}
+                className={`flex-1 py-3 px-3 text-center font-bold transition-all border-b-2 hover:bg-slate-100/50 flex items-center justify-center gap-1.5 ${activeTab === 'flight' ? 'border-indigo-650 text-indigo-600 bg-white font-extrabold' : 'border-transparent text-slate-500'
+                  }`}
               >
                 <Plane className="w-4 h-4" />
                 <span>AERODROMES</span>
@@ -1511,9 +1502,8 @@ export default function ImportPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab('route')}
-                className={`flex-1 py-3 px-3 text-center font-bold transition-all border-b-2 hover:bg-slate-100/50 flex items-center justify-center gap-1.5 ${
-                  activeTab === 'route' ? 'border-indigo-650 text-indigo-600 bg-white font-extrabold' : 'border-transparent text-slate-500'
-                }`}
+                className={`flex-1 py-3 px-3 text-center font-bold transition-all border-b-2 hover:bg-slate-100/50 flex items-center justify-center gap-1.5 ${activeTab === 'route' ? 'border-indigo-650 text-indigo-600 bg-white font-extrabold' : 'border-transparent text-slate-500'
+                  }`}
               >
                 <Compass className="w-4 h-4" />
                 <span>NAVLOG & FIXES</span>
@@ -1521,9 +1511,8 @@ export default function ImportPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab('map')}
-                className={`flex-1 py-3 px-3 text-center font-bold transition-all border-b-2 hover:bg-slate-100/50 flex items-center justify-center gap-1.5 ${
-                  activeTab === 'map' ? 'border-indigo-650 text-indigo-600 bg-white font-extrabold' : 'border-transparent text-slate-500'
-                }`}
+                className={`flex-1 py-3 px-3 text-center font-bold transition-all border-b-2 hover:bg-slate-100/50 flex items-center justify-center gap-1.5 ${activeTab === 'map' ? 'border-indigo-650 text-indigo-600 bg-white font-extrabold' : 'border-transparent text-slate-500'
+                  }`}
               >
                 <Map className="w-4 h-4" />
                 <span>ROUTE MAP</span>
@@ -1531,9 +1520,8 @@ export default function ImportPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab('ofp')}
-                className={`flex-1 py-3 px-3 text-center font-bold transition-all border-b-2 hover:bg-slate-100/50 flex items-center justify-center gap-1.5 ${
-                  activeTab === 'ofp' ? 'border-indigo-650 text-indigo-600 bg-white font-extrabold' : 'border-transparent text-slate-500'
-                }`}
+                className={`flex-1 py-3 px-3 text-center font-bold transition-all border-b-2 hover:bg-slate-100/50 flex items-center justify-center gap-1.5 ${activeTab === 'ofp' ? 'border-indigo-650 text-indigo-600 bg-white font-extrabold' : 'border-transparent text-slate-500'
+                  }`}
               >
                 <FileText className="w-4 h-4" />
                 <span>OFP</span>
@@ -1541,9 +1529,8 @@ export default function ImportPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab('images')}
-                className={`flex-1 py-3 px-3 text-center font-bold transition-all border-b-2 hover:bg-slate-100/50 flex items-center justify-center gap-1.5 ${
-                  activeTab === 'images' ? 'border-indigo-650 text-indigo-600 bg-white font-extrabold' : 'border-transparent text-slate-500'
-                }`}
+                className={`flex-1 py-3 px-3 text-center font-bold transition-all border-b-2 hover:bg-slate-100/50 flex items-center justify-center gap-1.5 ${activeTab === 'images' ? 'border-indigo-650 text-indigo-600 bg-white font-extrabold' : 'border-transparent text-slate-500'
+                  }`}
               >
                 <Image className="w-4 h-4" />
                 <span>MAPS</span>
@@ -1551,9 +1538,8 @@ export default function ImportPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab('raw')}
-                className={`flex-1 py-3 px-3 text-center font-bold transition-all border-b-2 hover:bg-slate-100/50 flex items-center justify-center gap-1.5 ${
-                  activeTab === 'raw' ? 'border-indigo-650 text-indigo-600 bg-white font-extrabold' : 'border-transparent text-slate-500'
-                }`}
+                className={`flex-1 py-3 px-3 text-center font-bold transition-all border-b-2 hover:bg-slate-100/50 flex items-center justify-center gap-1.5 ${activeTab === 'raw' ? 'border-indigo-650 text-indigo-600 bg-white font-extrabold' : 'border-transparent text-slate-500'
+                  }`}
               >
                 <Braces className="w-4 h-4" />
                 <span>RAW JSON DATA</span>
@@ -1624,7 +1610,7 @@ export default function ImportPage() {
                     <div className="space-y-6">
                       <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-6 shadow-sm">
                         <h4 className="text-base font-bold text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-2">
-                          <span>⏱️</span> Flight & Schedule Info
+                          <Clock className="w-4 h-4 text-indigo-500 shrink-0" /> Flight & Schedule Info
                         </h4>
 
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 text-center">
@@ -1662,7 +1648,7 @@ export default function ImportPage() {
                               <div className="text-slate-400 font-black text-xl">&rarr;</div>
                               <div className="text-right">
                                 <span className="text-xs text-slate-400 block font-semibold">BLOCK TIME</span>
-                                <span className="text-xl font-bold text-indigo-650">{getBlockTime(importedData.raw?.times)}</span>
+                                <span className="text-xl font-bold text-indigo-600">{getBlockTime(importedData.raw?.times)}</span>
                               </div>
                             </div>
                             {/* Visual bar */}
@@ -1695,7 +1681,7 @@ export default function ImportPage() {
                       {/* Weather & Atmospheric Stats */}
                       <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4 shadow-sm">
                         <h4 className="text-base font-bold text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-2">
-                          <span>🌍</span> Atmospheric & Cruise Wind Conditions
+                          <Globe className="w-4 h-4 text-indigo-500 shrink-0" /> Atmospheric & Cruise Wind Conditions
                         </h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                           <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col justify-between">
@@ -1712,7 +1698,7 @@ export default function ImportPage() {
                           </div>
                           <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col justify-between">
                             <span className="text-[10px] text-slate-450 font-bold block uppercase">OAT (ISA DEV)</span>
-                            <span className="text-lg font-extrabold text-indigo-650 mt-2">
+                            <span className="text-lg font-extrabold text-indigo-600 mt-2">
                               {formatOatAndIsaDev(
                                 calculateOat(importedData.raw?.general?.initial_altitude, importedData.raw?.general?.avg_temp_dev),
                                 importedData.raw?.general?.avg_temp_dev
@@ -1722,7 +1708,7 @@ export default function ImportPage() {
                           </div>
                           <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col justify-between">
                             <span className="text-[10px] text-slate-450 font-bold block uppercase">Tropopause</span>
-                            <span className="text-lg font-extrabold text-indigo-650 mt-2">
+                            <span className="text-lg font-extrabold text-indigo-600 mt-2">
                               {formatTropopause(importedData.raw?.general?.avg_tropopause)}
                             </span>
                             <span className="text-[9px] text-slate-400 mt-1">Average tropopause altitude</span>
@@ -1733,7 +1719,7 @@ export default function ImportPage() {
                       {/* Dispatch & Planning (Horizontal Layout) */}
                       <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4 shadow-sm">
                         <h4 className="text-base font-bold text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-2">
-                          <span>⚙️</span> Dispatch & Planning
+                          <Settings className="w-4 h-4 text-indigo-500 shrink-0" /> Dispatch & Planning
                         </h4>
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4 text-xs">
                           <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col justify-between">
@@ -1855,14 +1841,14 @@ export default function ImportPage() {
                   {/* Weights Section */}
                   <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-6 shadow-sm">
                     <h4 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-2">
-                      <span>⚖️</span> Operational Weights & Limits
+                      <Scale className="w-4 h-4 text-indigo-500 shrink-0" /> Operational Weights & Limits
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       {/* ZFW */}
                       <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-3">
                         <div className="flex justify-between items-baseline">
                           <span className="text-[10px] text-slate-400 font-extrabold block uppercase">Zero Fuel Weight</span>
-                          <span className="text-[10px] text-indigo-650 font-bold">MAX: {formatWeight(importedData.raw?.weights?.max_zfw).kgs}</span>
+                          <span className="text-[10px] text-indigo-600 font-bold">MAX: {formatWeight(importedData.raw?.weights?.max_zfw).kgs}</span>
                         </div>
                         <div className="flex justify-between items-baseline">
                           <span className="text-xl font-bold text-slate-800">{formatWeight(importedData.raw?.weights?.est_zfw).kgs}</span>
@@ -1920,7 +1906,7 @@ export default function ImportPage() {
                         {Number(importedData.raw?.weights?.max_ldw) > 0 && (
                           <div className="space-y-1">
                             <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden border border-slate-100">
-                              <div className="bg-blue-650 h-full rounded-full" style={{ width: `${Math.min(100, (Number(importedData.raw?.weights?.est_ldw) / Number(importedData.raw?.weights?.max_ldw)) * 100)}%` }}></div>
+                              <div className="bg-blue-600 h-full rounded-full" style={{ width: `${Math.min(100, (Number(importedData.raw?.weights?.est_ldw) / Number(importedData.raw?.weights?.max_ldw)) * 100)}%` }}></div>
                             </div>
                             <div className="flex justify-between text-[8px] text-slate-400">
                               <span>0%</span>
@@ -1955,7 +1941,7 @@ export default function ImportPage() {
                   {/* Fuel Section */}
                   <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-6 shadow-sm">
                     <h4 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-2">
-                      <span>⚓</span> Fuel Planning & Allocation
+                      <Anchor className="w-4 h-4 text-indigo-500 shrink-0" /> Fuel Planning & Allocation
                     </h4>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
@@ -2021,50 +2007,114 @@ export default function ImportPage() {
                     </div>
 
                     {/* Fuel bar segments */}
-                    {Number(importedData.raw?.fuel?.plan_ramp) > 0 && (
-                      <div className="space-y-1">
-                        <div className="flex h-3 rounded overflow-hidden bg-slate-950 border border-slate-800">
-                          <div
-                            className="bg-emerald-700"
-                            style={{ width: `${Math.max(2, (Number(importedData.raw?.fuel?.enroute_burn) / Number(importedData.raw?.fuel?.plan_ramp)) * 100)}%` }}
-                            title="Trip Burn"
-                          />
-                          <div
-                            className="bg-emerald-500"
-                            style={{ width: `${Math.max(2, (Number(importedData.raw?.fuel?.reserve) / Number(importedData.raw?.fuel?.plan_ramp)) * 100)}%` }}
-                            title="Final Reserve"
-                          />
-                          <div
-                            className="bg-emerald-400"
-                            style={{ width: `${Math.max(2, (Number(importedData.raw?.fuel?.taxi) / Number(importedData.raw?.fuel?.plan_ramp)) * 100)}%` }}
-                            title="Taxi"
-                          />
-                          <div
-                            className="bg-teal-600"
-                            style={{ width: `${Math.max(2, (Number(importedData.raw?.fuel?.contingency || 0) / Number(importedData.raw?.fuel?.plan_ramp)) * 100)}%` }}
-                            title="Contingency"
-                          />
-                          <div
-                            className="bg-amber-600"
-                            style={{ width: `${Math.max(2, (Number(importedData.raw?.fuel?.alternate_burn || importedData.raw?.fuel?.alternate || 0) / Number(importedData.raw?.fuel?.plan_ramp)) * 100)}%` }}
-                            title="Alternate"
-                          />
-                          <div
-                            className="bg-blue-600"
-                            style={{ width: `${Math.max(2, (Number(importedData.raw?.fuel?.extra || 0) / Number(importedData.raw?.fuel?.plan_ramp)) * 100)}%` }}
-                            title="Extra"
-                          />
+                    {(() => {
+                      const totalRamp = Number(importedData.raw?.fuel?.plan_ramp || 0);
+                      if (totalRamp <= 0) return null;
+
+                      const allocationData = [{
+                        name: 'Fuel',
+                        'Trip Burn': Number(importedData.raw?.fuel?.enroute_burn || 0),
+                        'Reserve': Number(importedData.raw?.fuel?.reserve || 0),
+                        'Taxi': Number(importedData.raw?.fuel?.taxi || 0),
+                        'Contingency': Number(importedData.raw?.fuel?.contingency || 0),
+                        'Alternate': Number(importedData.raw?.fuel?.alternate_burn || importedData.raw?.fuel?.alternate || 0),
+                        'Extra': Number(importedData.raw?.fuel?.extra || 0),
+                      }];
+
+                      return (
+                        <div className="space-y-3">
+                          <div className="w-full h-3 relative bg-slate-50 border border-slate-200/60 rounded-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart
+                                data={allocationData}
+                                layout="vertical"
+                                margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
+                              >
+                                <XAxis type="number" hide />
+                                <YAxis type="category" dataKey="name" hide />
+                                <Tooltip
+                                  position={{ y: -140 }}
+                                  isAnimationActive={false}
+                                  cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }}
+                                  content={({ active, payload }) => {
+                                    if (active && payload && payload.length) {
+                                      const data = payload[0].payload;
+                                      const items = [
+                                        { label: 'Trip Burn', value: data['Trip Burn'], color: '#047857' },
+                                        { label: 'Reserve', value: data['Reserve'], color: '#10b981' },
+                                        { label: 'Taxi', value: data['Taxi'], color: '#34d399' },
+                                        { label: 'Contingency', value: data['Contingency'], color: '#0d9488' },
+                                        { label: 'Alternate', value: data['Alternate'], color: '#d97706' },
+                                        { label: 'Extra', value: data['Extra'], color: '#2563eb' }
+                                      ];
+                                      return (
+                                        <div className="bg-white border border-slate-200 shadow-xl rounded-2xl p-4 text-xs font-sans space-y-2.5 min-w-[200px] border-collapse z-50">
+                                          <div className="font-extrabold text-slate-800 border-b border-slate-100 pb-1.5 flex justify-between">
+                                            <span>Ramp Fuel</span>
+                                            <span className="text-emerald-700">{totalRamp.toLocaleString('en-US')} kg</span>
+                                          </div>
+                                          <div className="space-y-1.5 font-mono text-[10px]">
+                                            {items.map((item, idx) => {
+                                              if (item.value <= 0) return null;
+                                              const pct = Math.round((item.value / totalRamp) * 100);
+                                              return (
+                                                <div key={idx} className="flex justify-between items-center gap-4 text-slate-500">
+                                                  <span className="flex items-center font-sans font-semibold">
+                                                    <span className="inline-block w-2 h-2 rounded-sm mr-1.5 shrink-0" style={{ backgroundColor: item.color }}></span>
+                                                    {item.label}
+                                                  </span>
+                                                  <span className="font-bold text-slate-700 text-right">
+                                                    {item.value.toLocaleString('en-US')} kg ({pct}%)
+                                                  </span>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  }}
+                                />
+                                <Bar dataKey="Trip Burn" stackId="a" fill="#047857" radius={[4, 0, 0, 4]} />
+                                <Bar dataKey="Reserve" stackId="a" fill="#10b981" />
+                                <Bar dataKey="Taxi" stackId="a" fill="#34d399" />
+                                <Bar dataKey="Contingency" stackId="a" fill="#0d9488" />
+                                <Bar dataKey="Alternate" stackId="a" fill="#d97706" />
+                                <Bar dataKey="Extra" stackId="a" fill="#2563eb" radius={[0, 4, 4, 0]} />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+
+                          <div className="flex flex-wrap justify-between text-[9px] text-slate-500 gap-y-2 gap-x-4 border-t border-slate-100 pt-3">
+                            <span className="flex items-center font-bold">
+                              <span className="inline-block w-2 h-2 rounded-sm bg-[#047857] mr-1.5 shrink-0"></span>
+                              TRIP BURN ({Math.round((allocationData[0]['Trip Burn'] / totalRamp) * 100)}%)
+                            </span>
+                            <span className="flex items-center font-bold">
+                              <span className="inline-block w-2 h-2 rounded-sm bg-[#10b981] mr-1.5 shrink-0"></span>
+                              RESERVE ({Math.round((allocationData[0]['Reserve'] / totalRamp) * 100)}%)
+                            </span>
+                            <span className="flex items-center font-bold">
+                              <span className="inline-block w-2 h-2 rounded-sm bg-[#34d399] mr-1.5 shrink-0"></span>
+                              TAXI ({Math.round((allocationData[0]['Taxi'] / totalRamp) * 100)}%)
+                            </span>
+                            <span className="flex items-center font-bold">
+                              <span className="inline-block w-2 h-2 rounded-sm bg-[#0d9488] mr-1.5 shrink-0"></span>
+                              CONTINGENCY ({Math.round((allocationData[0]['Contingency'] / totalRamp) * 100)}%)
+                            </span>
+                            <span className="flex items-center font-bold">
+                              <span className="inline-block w-2 h-2 rounded-sm bg-[#d97706] mr-1.5 shrink-0"></span>
+                              ALTERNATE ({Math.round((allocationData[0]['Alternate'] / totalRamp) * 100)}%)
+                            </span>
+                            <span className="flex items-center font-bold">
+                              <span className="inline-block w-2 h-2 rounded-sm bg-[#2563eb] mr-1.5 shrink-0"></span>
+                              EXTRA ({Math.round((allocationData[0]['Extra'] / totalRamp) * 100)}%)
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex flex-wrap justify-between text-[9px] text-slate-500 gap-x-4">
-                          <span>█ TRIP BURN ({Math.round((Number(importedData.raw?.fuel?.enroute_burn) / Number(importedData.raw?.fuel?.plan_ramp)) * 100)}%)</span>
-                          <span>█ RESERVE ({Math.round((Number(importedData.raw?.fuel?.reserve) / Number(importedData.raw?.fuel?.plan_ramp)) * 100)}%)</span>
-                          <span>█ TAXI ({Math.round((Number(importedData.raw?.fuel?.taxi) / Number(importedData.raw?.fuel?.plan_ramp)) * 100)}%)</span>
-                          <span>█ CONTINGENCY ({Math.round((Number(importedData.raw?.fuel?.contingency || 0) / Number(importedData.raw?.fuel?.plan_ramp)) * 100)}%)</span>
-                          <span>█ ALTERNATE ({Math.round((Number(importedData.raw?.fuel?.alternate_burn || importedData.raw?.fuel?.alternate || 0) / Number(importedData.raw?.fuel?.plan_ramp)) * 100)}%)</span>
-                          <span>█ EXTRA ({Math.round((Number(importedData.raw?.fuel?.extra || 0) / Number(importedData.raw?.fuel?.plan_ramp)) * 100)}%)</span>
-                        </div>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 </div>
               )}
@@ -2348,6 +2398,7 @@ export default function ImportPage() {
                       fixes={getNavlogFixes(importedData.raw)}
                       alternateFixes={getAlternateNavlogFixes(importedData.raw)}
                       units={importedData.raw.params?.units || 'lbs'}
+                      planRamp={Number(importedData.raw?.fuel?.plan_ramp || 0)}
                     />
                   )}
 
@@ -2365,7 +2416,7 @@ export default function ImportPage() {
                               <thead className="sticky top-0 bg-slate-50 z-10 shadow-sm">
                                 <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 font-bold text-[10px] whitespace-nowrap">
                                   <th className="py-2.5 px-3">FIX</th>
-                                  <th className="py-2.5 px-3">TYPE</th>
+                                  <th className="py-2.5 px-3">PHASE</th>
                                   <th className="py-2.5 px-3 text-right">ALTITUDE (FL)</th>
                                   <th className="py-2.5 px-3 text-right">HDG</th>
                                   <th className="py-2.5 px-3">AIRWAY</th>
@@ -2449,7 +2500,7 @@ export default function ImportPage() {
                                 <thead className="sticky top-0 bg-slate-50 z-10 shadow-sm">
                                   <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 font-bold text-[10px] whitespace-nowrap">
                                     <th className="py-2.5 px-3">FIX</th>
-                                    <th className="py-2.5 px-3">TYPE</th>
+                                    <th className="py-2.5 px-3">PHASE</th>
                                     <th className="py-2.5 px-3 text-right">ALTITUDE (FL)</th>
                                     <th className="py-2.5 px-3 text-right">HDG</th>
                                     <th className="py-2.5 px-3">AIRWAY</th>
@@ -2615,8 +2666,25 @@ export default function ImportPage() {
           </div>
         </section>
       )}
-
-
-    </main>
+      <style dangerouslySetInnerHTML={{
+        __html: `
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #f8fafc;
+          border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 4px;
+          border: 2px solid #f8fafc;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8;
+        }
+      `}} />
+    </div>
   );
 }

@@ -35,14 +35,14 @@ export default function ClimbPlannerPage() {
 
   return (
     <main className="space-y-6 max-w-5xl">
-      <header className="border-b border-slate-800 pb-4">
-        <h1 className="text-3xl font-extrabold tracking-wider font-mono text-cyan-400">CLIMB PERFORMANCE PLANNER</h1>
-        <p className="text-sm text-slate-400 mt-1">Calculate climb segments, target rates, and fuel parameters.</p>
+      <header className="border-b border-slate-200 pb-4">
+        <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 font-sans">CLIMB PERFORMANCE PLANNER</h1>
+        <p className="text-sm text-slate-500 mt-1 font-medium">Calculate climb segments, target rates, and fuel parameters.</p>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card-panel">
-          <h3 className="text-sm font-bold text-cyan-400 font-mono border-b border-slate-800 pb-2">CLIMB SEGMENTS</h3>
+          <h3 className="text-sm font-bold text-indigo-600 font-sans border-b border-slate-100 pb-2 uppercase tracking-wide">CLIMB SEGMENTS</h3>
           
           <div className="grid grid-cols-2 gap-4 pt-2">
             <div className="space-y-1">
@@ -110,28 +110,28 @@ export default function ClimbPlannerPage() {
 
         <div className="card-panel glow-cyan flex flex-col justify-between">
           <div>
-            <h3 className="text-sm font-bold text-cyan-400 font-mono border-b border-slate-800 pb-2">CALCULATED OUTPUTS</h3>
+            <h3 className="text-sm font-bold text-indigo-600 font-sans border-b border-slate-100 pb-2 uppercase tracking-wide">CALCULATED OUTPUTS</h3>
             <div className="space-y-3 font-mono text-sm pt-4">
               <div className="flex justify-between">
                 <span className="text-slate-500">Time to Climb:</span>
-                <span className="text-lg font-bold">{climbTimeMin.toFixed(1)} mins</span>
+                <span className="text-lg font-bold text-slate-900">{climbTimeMin.toFixed(1)} mins</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Climb Fuel Burn:</span>
-                <span className="text-lg font-bold text-emerald-400">{climbFuelLbs.toFixed(0)} lbs</span>
+                <span className="text-lg font-bold text-emerald-600">{climbFuelLbs.toFixed(0)} lbs</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Climb Distance:</span>
-                <span className="text-lg font-bold">{climbDistanceNm.toFixed(1)} NM</span>
+                <span className="text-lg font-bold text-slate-900">{climbDistanceNm.toFixed(1)} NM</span>
               </div>
-              <div className="flex justify-between border-t border-slate-800 pt-2 text-xs">
-                <span className="text-slate-500">Mid-Altitude ISA Temp:</span>
+              <div className="flex justify-between border-t border-slate-100 pt-2 text-xs text-slate-800">
+                <span className="text-slate-500 font-sans">Mid-Altitude ISA Temp:</span>
                 <span>{isaMid.standardTempC.toFixed(1)} °C</span>
               </div>
             </div>
           </div>
           
-          <div className="mt-4 p-3 bg-amber-950/20 border border-amber-800/40 rounded text-[10px] font-mono text-amber-400">
+          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded text-xs font-sans text-amber-800">
             <span>* calculations are using demo engine version v1.0.0</span>
           </div>
         </div>
