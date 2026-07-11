@@ -1,4 +1,4 @@
-import React from 'react';
+import { Wrench } from 'lucide-react';
 
 export default function AeronavesPage() {
   const models = [
@@ -19,10 +19,17 @@ export default function AeronavesPage() {
   ];
 
   return (
-    <main className="space-y-6 max-w-5xl">
-      <header className="border-b border-slate-200 pb-4">
-        <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 font-sans">AIRCRAFT & ENGINES CONFIG</h1>
-        <p className="text-sm text-slate-500 mt-1 font-medium">Configured airframe models, variants, and engine types.</p>
+    <div className="space-y-6 w-full">
+      <header className="pb-2 flex items-center gap-3 border-b border-slate-200/60">
+        <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-100/80 shadow-sm shrink-0">
+          <Wrench className="w-6 h-6" />
+        </div>
+        <div>
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight font-sans uppercase">
+            Aircraft & Engines Config
+          </h1>
+          <p className="text-slate-500 font-medium text-xs mt-0.5">Configured airframe models, variants, and engine types.</p>
+        </div>
       </header>
 
       <div className="space-y-6">
@@ -47,6 +54,6 @@ export default function AeronavesPage() {
           </div>
         ))}
       </div>
-    </main>
+    </div>
   );
 }

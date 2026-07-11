@@ -1,29 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FlightContext } from '@classic-flight-engineer/aviation-domain';
 import { parseAndNormalizeSimBrief } from '@classic-flight-engineer/simbrief-adapter';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { ClipboardList, Scale, Plane, Compass, Map, FileText, Image, Braces, User, DownloadCloud, Cloud, CheckCircle2, AlertCircle, Clock, Globe, Settings, Anchor } from 'lucide-react';
-
-// @ts-ignore
-import markerIcon from 'leaflet/dist/images/marker-icon.png';
-// @ts-ignore
-import markerIconRetina from 'leaflet/dist/images/marker-icon-2x.png';
-// @ts-ignore
-import markerShadow from 'leaflet/dist/images/marker-shadow.png';
-
-let DefaultIcon = L.icon({
-  iconUrl: markerIcon,
-  iconRetinaUrl: markerIconRetina,
-  shadowUrl: markerShadow,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  tooltipAnchor: [16, -28],
-  shadowSize: [41, 41]
-});
-L.Marker.prototype.options.icon = DefaultIcon;
+import { ClipboardList, Scale, Plane, Compass, Map, FileText, Image, Braces, User, DownloadCloud, Cloud, CheckCircle2, AlertCircle, Clock, Globe, Settings, Anchor, ChevronDown, ChevronUp, Copy } from 'lucide-react';
 
 import { useApp } from '../../components/AppContext';
 
@@ -412,210 +393,243 @@ const getFR24AltitudeColor = (flNum: number): string => {
   return '#ffffff';
 };
 
-const RouteMap = ({ fixes, alternateFixes = [], units }: { fixes: any[]; alternateFixes?: any[]; units: string }) => {
-  const mapRef = useRef<HTMLDivElement | null>(null);
-  const leafletMapRef = useRef<L.Map | null>(null);
+const MAP_STYLES: Record<string, { name: string; style: any }> = {
+  "cartodb-light": {
+    name: "CartoDB Light",
+    style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
+  },
+  "cartodb-dark": {
+    name: "CartoDB Dark",
+    style: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+  },
+  "cartodb-voyager": {
+    name: "CartoDB Voyager",
+    style: "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
+  },
+  "osm-raster": {
+    name: "OpenStreetMap Standard",
+    style: {
+      version: 8,
+      sources: {
+        'osm-tiles': {
+          type: 'raster',
+          tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+          tileSize: 256,
+          attribution: '&copy; OpenStreetMap contributors'
+        }
+      },
+      layers: [
+        {
+          id: 'osm-tiles-layer',
+          type: 'raster',
+          source: 'osm-tiles',
+          minzoom: 0,
+          maxzoom: 19
+        }
+      ]
+    }
+  }
+};
+
+const RouteMap = ({
+  fixes,
+  alternateFixes = [],
+  units,
+  origin,
+  destination
+}: {
+  fixes: any[];
+  alternateFixes?: any[];
+  units: string;
+  origin?: { ident: string; lat: number; lon: number };
+  destination?: { ident: string; lat: number; lon: number };
+}) => {
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+  const [styleKey, setStyleKey] = useState("cartodb-light");
+  const [projection, setProjection] = useState<'mercator' | 'globe'>('mercator');
+
+  // Filter valid waypoints with coordinates
+  const baseWaypoints = fixes.map(fix => {
+    const lat = Number(fix.pos_lat || fix.lat || fix.latitude);
+    const lon = Number(fix.pos_long || fix.lon || fix.longitude || fix.pos_lng || fix.lng);
+    return {
+      ident: fix.ident || fix.name || 'UNKNOWN',
+      lat,
+      lon,
+      fl: fix.fl || (fix.altitude_feet ? Math.round(Number(fix.altitude_feet) / 100) : '0'),
+      raw: fix
+    };
+  }).filter(wp => !isNaN(wp.lat) && !isNaN(wp.lon));
+
+  const waypoints = [...baseWaypoints];
+
+  // Prepend origin if provided and not already the first waypoint
+  if (origin && !isNaN(origin.lat) && !isNaN(origin.lon)) {
+    const originWp = {
+      ident: origin.ident,
+      lat: origin.lat,
+      lon: origin.lon,
+      fl: '0',
+      raw: { stage: 'CLB', fuel_plan_onboard: 0, fuel_totalused: 0, heading_mag: 0 }
+    };
+    if (waypoints.length === 0 || waypoints[0].ident !== origin.ident) {
+      waypoints.unshift(originWp);
+    }
+  }
+
+  // Append destination if provided and not already the last waypoint
+  if (destination && !isNaN(destination.lat) && !isNaN(destination.lon)) {
+    const destWp = {
+      ident: destination.ident,
+      lat: destination.lat,
+      lon: destination.lon,
+      fl: '0',
+      raw: { stage: 'ARR', fuel_plan_onboard: 0, fuel_totalused: 0, heading_mag: 0 }
+    };
+    if (waypoints.length === 0 || waypoints[waypoints.length - 1].ident !== destination.ident) {
+      waypoints.push(destWp);
+    }
+  }
+
+  const altWaypoints = alternateFixes.map(fix => {
+    const lat = Number(fix.pos_lat || fix.lat || fix.latitude);
+    const lon = Number(fix.pos_long || fix.lon || fix.longitude || fix.pos_lng || fix.lng);
+    return {
+      ident: fix.ident || fix.name || 'UNKNOWN',
+      lat,
+      lon,
+      fl: fix.fl || (fix.altitude_feet ? Math.round(Number(fix.altitude_feet) / 100) : '0'),
+      raw: fix
+    };
+  }).filter(wp => !isNaN(wp.lat) && !isNaN(wp.lon));
 
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapContainerRef.current || waypoints.length === 0) return;
 
-    // Filter valid waypoints with coordinates
-    const waypoints = fixes.map(fix => {
-      const lat = Number(fix.pos_lat || fix.lat || fix.latitude);
-      const lon = Number(fix.pos_long || fix.lon || fix.longitude || fix.pos_lng || fix.lng);
-      return {
-        ident: fix.ident || fix.name || 'UNKNOWN',
-        lat,
-        lon,
-        fl: fix.fl || (fix.altitude_feet ? Math.round(Number(fix.altitude_feet) / 100) : '0'),
-        raw: fix
-      };
-    }).filter(wp => !isNaN(wp.lat) && !isNaN(wp.lon));
-
-    const altWaypoints = alternateFixes.map(fix => {
-      const lat = Number(fix.pos_lat || fix.lat || fix.latitude);
-      const lon = Number(fix.pos_long || fix.lon || fix.longitude || fix.pos_lng || fix.lng);
-      return {
-        ident: fix.ident || fix.name || 'UNKNOWN',
-        lat,
-        lon,
-        fl: fix.fl || (fix.altitude_feet ? Math.round(Number(fix.altitude_feet) / 100) : '0'),
-        raw: fix
-      };
-    }).filter(wp => !isNaN(wp.lat) && !isNaN(wp.lon));
-
-    if (waypoints.length === 0) return;
-
-    // Initialize map
     const firstWp = waypoints[0];
-    const map = L.map(mapRef.current).setView([firstWp.lat, firstWp.lon], 4);
-    leafletMapRef.current = map;
-
-    // Define available tile layers
-    const claro = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      subdomains: 'abcd',
-      maxZoom: 20
+    
+    // Initialize Map with dynamic projection
+    const map = new maplibregl.Map({
+      container: mapContainerRef.current,
+      style: MAP_STYLES[styleKey].style,
+      center: [firstWp.lon, firstWp.lat],
+      zoom: projection === 'globe' ? 1.5 : 4
     });
+    mapRef.current = map;
+    map.addControl(new maplibregl.NavigationControl(), 'top-left');
 
-    const escuro = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      subdomains: 'abcd',
-      maxZoom: 20
-    });
+    const addMapData = () => {
+      if (map.getSource('route-main')) return;
 
-    const osm = L.tileLayer('https://tile.openstreetmap.de/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      maxZoom: 18
-    });
-
-    const mapTiles = L.tileLayer('https://maptiles.p.rapidapi.com/en/map/v1/{z}/{x}/{y}.png?rapidapi-key={apikey}', {
-      attribution: '&copy; <a href="http://www.maptilesapi.com/">MapTiles API</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      apikey: 'eb06d654aemshb0b7dc06b51f1f0p1896a9jsn3b989223c526',
-      maxZoom: 19
-    } as any);
-
-    const satelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-      maxZoom: 18
-    });
-
-    const openTopoMap = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-      maxZoom: 17,
-      attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
-    });
-
-    const stadiaLight = L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.{ext}', {
-      minZoom: 0,
-      maxZoom: 20,
-      attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      ext: 'png'
-    } as any);
-
-    const stadiaDark = L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.{ext}', {
-      minZoom: 0,
-      maxZoom: 20,
-      attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      ext: 'png'
-    } as any);
-
-    const voyager = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      subdomains: 'abcd',
-      maxZoom: 20
-    });
-
-    const stadiaSatellite = L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}{r}.{ext}', {
-      minZoom: 0,
-      maxZoom: 20,
-      attribution: '&copy; CNES, Distribution Airbus DS, © Airbus DS, © PlanetObserver (Contains Copernicus Data) | &copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      ext: 'jpg'
-    } as any);
-
-    const stadiaOSM = L.tileLayer('https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}{r}.{ext}', {
-      minZoom: 0,
-      maxZoom: 20,
-      attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      ext: 'png'
-    } as any);
-
-    const stadiaToner = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_lite/{z}/{x}/{y}{r}.{ext}', {
-      minZoom: 0,
-      maxZoom: 20,
-      attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      ext: 'png'
-    } as any);
-
-    // Add 'claro' layer by default
-    claro.addTo(map);
-
-    // Layer control selector
-    const baseMaps = {
-      "CartoDB Light": claro,
-      "CartoDB Dark": escuro,
-      "CartoDB Voyager": voyager,
-      "Stadia Light": stadiaLight,
-      "Stadia Dark": stadiaDark,
-      "Stadia OSM": stadiaOSM,
-      "Stadia Satellite": stadiaSatellite,
-      "Stadia Toner": stadiaToner,
-      "OSM Std": osm,
-      "MapTiles": mapTiles,
-      "OpenTopoMap": openTopoMap,
-      "Satellite": satelite
-    };
-
-    L.control.layers(baseMaps, undefined, { position: 'topright' }).addTo(map);
-
-    // Add segmented polyline for route
-    for (let i = 0; i < waypoints.length - 1; i++) {
-      const wp1 = waypoints[i];
-      const wp2 = waypoints[i + 1];
-
-      const flVal1 = Number(wp1.fl);
-      const flVal2 = Number(wp2.fl);
-      // Determine segment color based on the higher altitude of the two points
-      const flVal = Math.max(flVal1, flVal2);
-
-      const segmentColor = getFR24AltitudeColor(flVal);
-
-      L.polyline([[wp1.lat, wp1.lon], [wp2.lat, wp2.lon]], {
-        color: segmentColor,
-        weight: 3.5,
-        opacity: 0.95
-      }).addTo(map);
-    }
-
-    // Add segmented dashed polylines for alternate route
-    const alternateSegments = [];
-    if (waypoints.length > 0) {
-      const lastMain = waypoints[waypoints.length - 1];
-      alternateSegments.push(lastMain);
-    }
-
-    const altWpsToRender = altWaypoints.length > 0 && altWaypoints[0].ident === waypoints[waypoints.length - 1]?.ident
-      ? altWaypoints.slice(1)
-      : altWaypoints;
-
-    altWpsToRender.forEach(wp => {
-      alternateSegments.push(wp);
-    });
-
-    for (let i = 0; i < alternateSegments.length - 1; i++) {
-      const wp1 = alternateSegments[i];
-      const wp2 = alternateSegments[i + 1];
-
-      const flVal1 = Number(wp1.fl);
-      const flVal2 = Number(wp2.fl);
-      const flVal = Math.max(flVal1, flVal2);
-
-      const segmentColor = getFR24AltitudeColor(flVal);
-
-      L.polyline([[wp1.lat, wp1.lon], [wp2.lat, wp2.lon]], {
-        color: segmentColor,
-        weight: 3.5,
-        opacity: 0.95,
-        dashArray: '6, 6'
-      }).addTo(map);
-    }
-
-    // Add custom markers for main route
-    waypoints.forEach((wp, idx) => {
-      const flVal = Number(wp.fl);
-      const fix = wp.raw;
-
-      let dotColor = getFR24AltitudeColor(flVal);
-      if (idx === 0 || idx === waypoints.length - 1) {
-        dotColor = '#0ea5e9'; // Blue/Cyan for Origin/Destination
+      // Add Main Route Line
+      const mainFeatures: any[] = [];
+      for (let i = 0; i < waypoints.length - 1; i++) {
+        const wp1 = waypoints[i];
+        const wp2 = waypoints[i + 1];
+        const flVal = Math.max(Number(wp1.fl), Number(wp2.fl));
+        const segmentColor = getFR24AltitudeColor(flVal);
+        mainFeatures.push({
+          type: 'Feature',
+          properties: { color: segmentColor },
+          geometry: {
+            type: 'LineString',
+            coordinates: [
+              [wp1.lon, wp1.lat],
+              [wp2.lon, wp2.lat]
+            ]
+          }
+        });
       }
 
-      const isTod = wp.ident.toUpperCase().includes('TOD');
-      const isToc = wp.ident.toUpperCase().includes('TOC');
+      map.addSource('route-main', {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: mainFeatures
+        }
+      });
 
-      // Create a custom icon using divIcon
-      const icon = L.divIcon({
-        className: 'custom-route-marker',
-        html: `
+      map.addLayer({
+        id: 'route-main-layer',
+        type: 'line',
+        source: 'route-main',
+        paint: {
+          'line-color': ['get', 'color'],
+          'line-width': 3.5,
+          'line-opacity': 0.95
+        }
+      });
+
+      // Add Alternate Route Line
+      const alternateSegments: any[] = [];
+      if (waypoints.length > 0) {
+        const lastMain = waypoints[waypoints.length - 1];
+        alternateSegments.push(lastMain);
+      }
+      const altWpsToRender = altWaypoints.length > 0 && altWaypoints[0].ident === waypoints[waypoints.length - 1]?.ident
+        ? altWaypoints.slice(1)
+        : altWaypoints;
+      altWpsToRender.forEach(wp => {
+        alternateSegments.push(wp);
+      });
+
+      const alternateFeatures: any[] = [];
+      for (let i = 0; i < alternateSegments.length - 1; i++) {
+        const wp1 = alternateSegments[i];
+        const wp2 = alternateSegments[i + 1];
+        const flVal = Math.max(Number(wp1.fl), Number(wp2.fl));
+        const segmentColor = getFR24AltitudeColor(flVal);
+        alternateFeatures.push({
+          type: 'Feature',
+          properties: { color: segmentColor },
+          geometry: {
+            type: 'LineString',
+            coordinates: [
+              [wp1.lon, wp1.lat],
+              [wp2.lon, wp2.lat]
+            ]
+          }
+        });
+      }
+
+      if (alternateFeatures.length > 0) {
+        map.addSource('route-alternate', {
+          type: 'geojson',
+          data: {
+            type: 'FeatureCollection',
+            features: alternateFeatures
+          }
+        });
+        map.addLayer({
+          id: 'route-alternate-layer',
+          type: 'line',
+          source: 'route-alternate',
+          paint: {
+            'line-color': ['get', 'color'],
+            'line-width': 3.5,
+            'line-opacity': 0.95,
+            'line-dasharray': [2, 2]
+          }
+        });
+      }
+
+      // Add HTML Markers
+      waypoints.forEach((wp, idx) => {
+        const flVal = Number(wp.fl);
+        const fix = wp.raw;
+        let dotColor = getFR24AltitudeColor(flVal);
+        if (idx === 0 || idx === waypoints.length - 1) {
+          dotColor = '#0ea5e9';
+        }
+        const isTod = wp.ident.toUpperCase().includes('TOD');
+        const isToc = wp.ident.toUpperCase().includes('TOC');
+
+        const el = document.createElement('div');
+        el.className = 'custom-route-marker';
+        el.style.width = '20px';
+        el.style.height = '20px';
+        el.innerHTML = `
           <div style="
             position: absolute;
             top: -24px;
@@ -648,13 +662,11 @@ const RouteMap = ({ fixes, alternateFixes = [], units }: { fixes: any[]; alterna
           </div>
           ${isTod || isToc
             ? `
-              <!-- Clickable Triangle for TOD/TOC centered in the 20x20 container -->
               <svg width="12" height="12" viewBox="0 0 100 100" style="margin: 4px; cursor: pointer; filter: drop-shadow(0px 1px 2px rgba(0,0,0,0.5));">
                 <polygon points="${isTod ? '50,90 5,10 95,10' : '50,10 5,90 95,90'}" fill="#ffffff" stroke="${dotColor}" stroke-width="16" stroke-linejoin="round" />
               </svg>
             `
             : `
-              <!-- Clickable Circle Dot centered in the 20x20 container -->
               <div style="
                 width: 10px;
                 height: 10px;
@@ -667,123 +679,77 @@ const RouteMap = ({ fixes, alternateFixes = [], units }: { fixes: any[]; alterna
               "></div>
             `
           }
-        `,
-        iconSize: [20, 20],
-        iconAnchor: [10, 10]
+        `;
+
+        const rawStage = fix.stage || 'CRUISE';
+        const stageBadgeText = rawStage.charAt(0).toUpperCase() + rawStage.slice(1).toLowerCase();
+        const isLbs = units.toLowerCase() === 'lbs';
+        const rawFuelRem = Number(fix.fuel_plan_onboard || fix.fuel_onboard || fix.fuel_on_board || fix.fob || 0);
+        const fuelRemKg = isLbs ? Math.round(rawFuelRem * 0.45359237) : rawFuelRem;
+        const rawFuelUsed = Number(fix.fuel_totalused || 0);
+        const fuelUsedKg = isLbs ? Math.round(rawFuelUsed * 0.45359237) : rawFuelUsed;
+        const hdg = String(fix.heading_mag !== undefined ? fix.heading_mag : (fix.heading_true || 0)).padStart(3, '0') + '°';
+        const airway = fix.via_airway || 'DCT';
+        const tas = fix.true_airspeed ? `${fix.true_airspeed} kt` : 'N/A';
+        const gs = fix.groundspeed ? `${fix.groundspeed} kt` : 'N/A';
+
+        let machVal = fix.mach ? Number(fix.mach) : null;
+        if (machVal && machVal > 10) {
+          machVal = machVal / 1000;
+        } else if (!machVal && fix.mach_thousandths) {
+          machVal = Number(fix.mach_thousandths) / 1000;
+        }
+        const machStr = machVal ? machVal.toFixed(2) : 'N/A';
+        const wind = fix.wind_dir !== undefined && fix.wind_spd !== undefined ? `${fix.wind_dir}°/${fix.wind_spd} kt` : 'N/A';
+        const oat = fix.oat !== undefined ? `${fix.oat}°C` : 'N/A';
+        const legTime = fix.time_leg !== undefined ? fix.time_leg : '0';
+        const totalTime = fix.time_total !== undefined ? fix.time_total : '0';
+
+        const popupContent = `
+          <div style="font-family: 'Roboto Mono', monospace; font-size: 10px; color: #334155; min-width: 140px; padding: 2px 1px; line-height: 1.25;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 5px;">
+              <span style="font-family: 'Lato', sans-serif; font-weight: 900; font-size: 11px; color: #0f172a;">${wp.ident}</span>
+              <span style="font-family: 'Lato', sans-serif; font-size: 8px; font-weight: 800; background-color: #ecfdf5; color: #10b981; padding: 1px 4px; border-radius: 3px; text-transform: uppercase;">
+                ${stageBadgeText}
+              </span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2.5px;">
+              <div style="display: flex; justify-content: space-between;"><span style="color: #64748b;">Alt</span><span style="font-weight: 700; color: #0f172a;">FL${wp.fl}</span></div>
+              <div style="display: flex; justify-content: space-between;"><span style="color: #64748b;">Hdg</span><span style="font-weight: 700; color: #0f172a;">${hdg}</span></div>
+              <div style="display: flex; justify-content: space-between;"><span style="color: #64748b;">Airway</span><span style="font-weight: 700; color: #0f172a;">${airway}</span></div>
+              <div style="display: flex; justify-content: space-between;"><span style="color: #64748b;">TAS</span><span style="font-weight: 700; color: #0f172a;">${tas}</span></div>
+              <div style="display: flex; justify-content: space-between;"><span style="color: #64748b;">GS</span><span style="font-weight: 700; color: #0f172a;">${gs}</span></div>
+              <div style="display: flex; justify-content: space-between;"><span style="color: #64748b;">Mach</span><span style="font-weight: 700; color: #0f172a;">${machStr}</span></div>
+              <div style="display: flex; justify-content: space-between;"><span style="color: #64748b;">Wind</span><span style="font-weight: 700; color: #0f172a;">${wind}</span></div>
+              <div style="display: flex; justify-content: space-between;"><span style="color: #64748b;">OAT</span><span style="font-weight: 700; color: #0f172a;">${oat}</span></div>
+              <div style="display: flex; justify-content: space-between;"><span style="color: #64748b;">Fuel Rem</span><span style="font-weight: 700; color: #0f172a;">${fuelRemKg.toLocaleString('en-US')} kg</span></div>
+              <div style="display: flex; justify-content: space-between;"><span style="color: #64748b;">Fuel Used</span><span style="font-weight: 700; color: #0f172a;">${fuelUsedKg.toLocaleString('en-US')} kg</span></div>
+              <div style="display: flex; justify-content: space-between;"><span style="color: #64748b;">Leg Time</span><span style="font-weight: 700; color: #0f172a;">${legTime}</span></div>
+              <div style="display: flex; justify-content: space-between;"><span style="color: #64748b;">Total</span><span style="font-weight: 700; color: #0f172a;">${totalTime}</span></div>
+            </div>
+          </div>
+        `;
+
+        const popup = new maplibregl.Popup({ offset: 15, maxWidth: '180px' }).setHTML(popupContent);
+        new maplibregl.Marker({ element: el })
+          .setLngLat([wp.lon, wp.lat])
+          .setPopup(popup)
+          .addTo(map);
       });
 
-      const marker = L.marker([wp.lat, wp.lon], { icon }).addTo(map);
+      // Alternate Waypoints
+      altWpsToRender.forEach((wp) => {
+        const fix = wp.raw;
+        const flVal = Number(wp.fl);
+        const dotColor = getFR24AltitudeColor(flVal);
+        const isTod = wp.ident.toUpperCase().includes('TOD');
+        const isToc = wp.ident.toUpperCase().includes('TOC');
 
-      // Extract details for the popup
-      const rawStage = fix.stage || 'CRUISE';
-      const stageBadgeText = rawStage.charAt(0).toUpperCase() + rawStage.slice(1).toLowerCase();
-
-      const isLbs = units.toLowerCase() === 'lbs';
-
-      const rawFuelRem = Number(fix.fuel_plan_onboard || fix.fuel_onboard || fix.fuel_on_board || fix.fob || 0);
-      const fuelRemKg = isLbs ? Math.round(rawFuelRem * 0.45359237) : rawFuelRem;
-
-      const rawFuelUsed = Number(fix.fuel_totalused || 0);
-      const fuelUsedKg = isLbs ? Math.round(rawFuelUsed * 0.45359237) : rawFuelUsed;
-
-      const hdg = String(fix.heading_mag !== undefined ? fix.heading_mag : (fix.heading_true || 0)).padStart(3, '0') + '°';
-      const airway = fix.via_airway || 'DCT';
-      const tas = fix.true_airspeed ? `${fix.true_airspeed} kt` : 'N/A';
-      const gs = fix.groundspeed ? `${fix.groundspeed} kt` : 'N/A';
-
-      let machVal = fix.mach ? Number(fix.mach) : null;
-      if (machVal && machVal > 10) {
-        machVal = machVal / 1000;
-      } else if (!machVal && fix.mach_thousandths) {
-        machVal = Number(fix.mach_thousandths) / 1000;
-      }
-      const machStr = machVal ? machVal.toFixed(2) : 'N/A';
-
-      const wind = fix.wind_dir !== undefined && fix.wind_spd !== undefined ? `${fix.wind_dir}°/${fix.wind_spd} kt` : 'N/A';
-      const oat = fix.oat !== undefined ? `${fix.oat}°C` : 'N/A';
-
-      const legTime = fix.time_leg !== undefined ? fix.time_leg : '0';
-      const totalTime = fix.time_total !== undefined ? fix.time_total : '0';
-
-      const popupContent = `
-        <div style="font-family: 'Roboto Mono', monospace; font-size: 11px; color: #334155; min-width: 170px; padding: 4px 2px;">
-          <!-- Header -->
-          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 8px;">
-            <span style="font-family: 'Lato', sans-serif; font-weight: 900; font-size: 13px; color: #0f172a; letter-spacing: -0.2px;">${wp.ident}</span>
-            <span style="font-family: 'Lato', sans-serif; font-size: 9px; font-weight: 800; background-color: #ecfdf5; color: #10b981; padding: 1.5px 6px; border-radius: 4px; text-transform: uppercase;">
-              ${stageBadgeText}
-            </span>
-          </div>
-          
-          <!-- Rows -->
-          <div style="display: flex; flex-direction: column; gap: 4px;">
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: #64748b;">Alt</span>
-              <span style="font-weight: 700; color: #0f172a;">FL${wp.fl}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: #64748b;">Hdg</span>
-              <span style="font-weight: 700; color: #0f172a;">${hdg}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: #64748b;">Airway</span>
-              <span style="font-weight: 700; color: #0f172a;">${airway}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: #64748b;">TAS</span>
-              <span style="font-weight: 700; color: #0f172a;">${tas}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: #64748b;">GS</span>
-              <span style="font-weight: 700; color: #0f172a;">${gs}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: #64748b;">Mach</span>
-              <span style="font-weight: 700; color: #0f172a;">${machStr}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: #64748b;">Wind</span>
-              <span style="font-weight: 700; color: #0f172a;">${wind}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: #64748b;">OAT</span>
-              <span style="font-weight: 700; color: #0f172a;">${oat}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: #64748b;">Fuel Rem</span>
-              <span style="font-weight: 700; color: #0f172a;">${fuelRemKg.toLocaleString('en-US')} kg</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: #64748b;">Fuel Used</span>
-              <span style="font-weight: 700; color: #0f172a;">${fuelUsedKg.toLocaleString('en-US')} kg</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: #64748b;">Leg Time</span>
-              <span style="font-weight: 700; color: #0f172a;">${legTime}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: #64748b;">Total</span>
-              <span style="font-weight: 700; color: #0f172a;">${totalTime}</span>
-            </div>
-          </div>
-        </div>
-      `;
-      marker.bindPopup(popupContent, { maxWidth: 220 });
-    });
-
-    // Add custom markers for alternate route
-    altWpsToRender.forEach((wp) => {
-      const fix = wp.raw;
-      const flVal = Number(wp.fl);
-      const dotColor = getFR24AltitudeColor(flVal);
-
-      const isTod = wp.ident.toUpperCase().includes('TOD');
-      const isToc = wp.ident.toUpperCase().includes('TOC');
-
-      // Create a custom icon using divIcon
-      const icon = L.divIcon({
-        className: 'custom-route-marker',
-        html: `
+        const el = document.createElement('div');
+        el.className = 'custom-route-marker';
+        el.style.width = '20px';
+        el.style.height = '20px';
+        el.innerHTML = `
           <div style="
             position: absolute;
             top: -24px;
@@ -816,13 +782,11 @@ const RouteMap = ({ fixes, alternateFixes = [], units }: { fixes: any[]; alterna
           </div>
           ${isTod || isToc
             ? `
-              <!-- Clickable Triangle for TOD/TOC centered in the 20x20 container -->
               <svg width="12" height="12" viewBox="0 0 100 100" style="margin: 4px; cursor: pointer; filter: drop-shadow(0px 1px 2px rgba(0,0,0,0.5));">
                 <polygon points="${isTod ? '50,90 5,10 95,10' : '50,10 5,90 95,90'}" fill="#ffffff" stroke="${dotColor}" stroke-width="16" stroke-linejoin="round" />
               </svg>
             `
             : `
-              <!-- Clickable Circle Dot centered in the 20x20 container -->
               <div style="
                 width: 10px;
                 height: 10px;
@@ -835,135 +799,176 @@ const RouteMap = ({ fixes, alternateFixes = [], units }: { fixes: any[]; alterna
               "></div>
             `
           }
-        `,
-        iconSize: [20, 20],
-        iconAnchor: [10, 10]
+        `;
+
+        const rawStage = fix.stage || 'ALTN';
+        const stageBadgeText = rawStage === 'ALTN' ? 'Altn' : rawStage.charAt(0).toUpperCase() + rawStage.slice(1).toLowerCase();
+        const isLbs = units.toLowerCase() === 'lbs';
+        const rawFuelRem = Number(fix.fuel_plan_onboard || fix.fuel_onboard || fix.fuel_on_board || fix.fob || 0);
+        const fuelRemKg = isLbs ? Math.round(rawFuelRem * 0.45359237) : rawFuelRem;
+        const rawFuelUsed = Number(fix.fuel_totalused || 0);
+        const fuelUsedKg = isLbs ? Math.round(rawFuelUsed * 0.45359237) : rawFuelUsed;
+        const hdg = String(fix.heading_mag !== undefined ? fix.heading_mag : (fix.heading_true || 0)).padStart(3, '0') + '°';
+        const airway = fix.via_airway || 'DCT';
+        const tas = fix.true_airspeed ? `${fix.true_airspeed} kt` : 'N/A';
+        const gs = fix.groundspeed ? `${fix.groundspeed} kt` : 'N/A';
+
+        let machVal = fix.mach ? Number(fix.mach) : null;
+        if (machVal && machVal > 10) {
+          machVal = machVal / 1000;
+        } else if (!machVal && fix.mach_thousandths) {
+          machVal = Number(fix.mach_thousandths) / 1000;
+        }
+        const machStr = machVal ? machVal.toFixed(2) : 'N/A';
+        const wind = fix.wind_dir !== undefined && fix.wind_spd !== undefined ? `${fix.wind_dir}°/${fix.wind_spd} kt` : 'N/A';
+        const oat = fix.oat !== undefined ? `${fix.oat}°C` : 'N/A';
+        const legTime = fix.time_leg !== undefined ? fix.time_leg : '0';
+        const totalTime = fix.time_total !== undefined ? fix.time_total : '0';
+
+        const popupContent = `
+          <div style="font-family: 'Roboto Mono', monospace; font-size: 10px; color: #334155; min-width: 140px; padding: 2px 1px; line-height: 1.25;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 5px;">
+              <span style="font-family: 'Lato', sans-serif; font-weight: 900; font-size: 11px; color: #0f172a;">${wp.ident}</span>
+              <span style="font-family: 'Lato', sans-serif; font-size: 8px; font-weight: 800; background-color: #fee2e2; color: #ef4444; padding: 1px 4px; border-radius: 3px; text-transform: uppercase;">
+                ${stageBadgeText}
+              </span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2.5px;">
+              <div style="display: flex; justify-content: space-between;"><span style="color: #64748b;">Alt</span><span style="font-weight: 700; color: #0f172a;">FL${wp.fl}</span></div>
+              <div style="display: flex; justify-content: space-between;"><span style="color: #64748b;">Hdg</span><span style="font-weight: 700; color: #0f172a;">${hdg}</span></div>
+              <div style="display: flex; justify-content: space-between;"><span style="color: #64748b;">Airway</span><span style="font-weight: 700; color: #0f172a;">${airway}</span></div>
+              <div style="display: flex; justify-content: space-between;"><span style="color: #64748b;">TAS</span><span style="font-weight: 700; color: #0f172a;">${tas}</span></div>
+              <div style="display: flex; justify-content: space-between;"><span style="color: #64748b;">GS</span><span style="font-weight: 700; color: #0f172a;">${gs}</span></div>
+              <div style="display: flex; justify-content: space-between;"><span style="color: #64748b;">Mach</span><span style="font-weight: 700; color: #0f172a;">${machStr}</span></div>
+              <div style="display: flex; justify-content: space-between;"><span style="color: #64748b;">Wind</span><span style="font-weight: 700; color: #0f172a;">${wind}</span></div>
+              <div style="display: flex; justify-content: space-between;"><span style="color: #64748b;">OAT</span><span style="font-weight: 700; color: #0f172a;">${oat}</span></div>
+              <div style="display: flex; justify-content: space-between;"><span style="color: #64748b;">Fuel Rem</span><span style="font-weight: 700; color: #0f172a;">${fuelRemKg.toLocaleString('en-US')} kg</span></div>
+              <div style="display: flex; justify-content: space-between;"><span style="color: #64748b;">Fuel Used</span><span style="font-weight: 700; color: #0f172a;">${fuelUsedKg.toLocaleString('en-US')} kg</span></div>
+              <div style="display: flex; justify-content: space-between;"><span style="color: #64748b;">Leg Time</span><span style="font-weight: 700; color: #0f172a;">${legTime}</span></div>
+              <div style="display: flex; justify-content: space-between;"><span style="color: #64748b;">Total</span><span style="font-weight: 700; color: #0f172a;">${totalTime}</span></div>
+            </div>
+          </div>
+        `;
+
+        const popup = new maplibregl.Popup({ offset: 15, maxWidth: '180px' }).setHTML(popupContent);
+        new maplibregl.Marker({ element: el })
+          .setLngLat([wp.lon, wp.lat])
+          .setPopup(popup)
+          .addTo(map);
       });
 
-      const marker = L.marker([wp.lat, wp.lon], { icon }).addTo(map);
-
-      // Extract details for the popup
-      const rawStage = fix.stage || 'ALTN';
-      const stageBadgeText = rawStage === 'ALTN' ? 'Altn' : rawStage.charAt(0).toUpperCase() + rawStage.slice(1).toLowerCase();
-
-      const isLbs = units.toLowerCase() === 'lbs';
-
-      const rawFuelRem = Number(fix.fuel_plan_onboard || fix.fuel_onboard || fix.fuel_on_board || fix.fob || 0);
-      const fuelRemKg = isLbs ? Math.round(rawFuelRem * 0.45359237) : rawFuelRem;
-
-      const rawFuelUsed = Number(fix.fuel_totalused || 0);
-      const fuelUsedKg = isLbs ? Math.round(rawFuelUsed * 0.45359237) : rawFuelUsed;
-
-      const hdg = String(fix.heading_mag !== undefined ? fix.heading_mag : (fix.heading_true || 0)).padStart(3, '0') + '°';
-      const airway = fix.via_airway || 'DCT';
-      const tas = fix.true_airspeed ? `${fix.true_airspeed} kt` : 'N/A';
-      const gs = fix.groundspeed ? `${fix.groundspeed} kt` : 'N/A';
-
-      let machVal = fix.mach ? Number(fix.mach) : null;
-      if (machVal && machVal > 10) {
-        machVal = machVal / 1000;
-      } else if (!machVal && fix.mach_thousandths) {
-        machVal = Number(fix.mach_thousandths) / 1000;
+      // Fit map boundary to include all points
+      const latLns = [
+        ...waypoints.map(wp => [wp.lon, wp.lat] as [number, number]),
+        ...altWpsToRender.map(wp => [wp.lon, wp.lat] as [number, number])
+      ];
+      if (latLns.length > 0) {
+        const bounds = latLns.reduce(
+          (acc, coord) => acc.extend(coord),
+          new maplibregl.LngLatBounds(latLns[0], latLns[0])
+        );
+        map.fitBounds(bounds, { padding: 50 });
       }
-      const machStr = machVal ? machVal.toFixed(2) : 'N/A';
+    };
 
-      const wind = fix.wind_dir !== undefined && fix.wind_spd !== undefined ? `${fix.wind_dir}°/${fix.wind_spd} kt` : 'N/A';
-      const oat = fix.oat !== undefined ? `${fix.oat}°C` : 'N/A';
+    map.on('style.load', () => {
+      if (projection === 'globe') {
+        try {
+          map.setProjection({ type: 'globe' });
+        } catch (e) {
+          console.warn("Globe projection error: ", e);
+        }
+      }
+      
+      // Transliterate non-latin (Chinese, Cyrillic, Arabic) map labels to English/Latin characters
+      try {
+        const layers = map.getStyle().layers;
+        if (layers) {
+          layers.forEach((layer: any) => {
+            if (layer.type === 'symbol' && layer.layout && layer.layout['text-field']) {
+              const textField = layer.layout['text-field'];
+              if (textField === '{name}') {
+                map.setLayoutProperty(layer.id, 'text-field', '{name_en}');
+              } else if (Array.isArray(textField) && textField[0] === 'get' && textField[1] === 'name') {
+                map.setLayoutProperty(layer.id, 'text-field', ['coalesce', ['get', 'name_en'], ['get', 'name']]);
+              } else if (typeof textField === 'string' && textField.includes('{name}')) {
+                map.setLayoutProperty(layer.id, 'text-field', textField.replace(/{name}/g, '{name_en}'));
+              } else if (Array.isArray(textField)) {
+                try {
+                  const str = JSON.stringify(textField);
+                  if (str.includes('"name"')) {
+                    const replaced = JSON.parse(str.replace(/"name"/g, '"name_en"'));
+                    map.setLayoutProperty(layer.id, 'text-field', replaced);
+                  }
+                } catch (err) {}
+              }
+            }
+          });
+        }
+      } catch (err) {
+        console.warn("Failed to transliterate labels: ", err);
+      }
 
-      const legTime = fix.time_leg !== undefined ? fix.time_leg : '0';
-      const totalTime = fix.time_total !== undefined ? fix.time_total : '0';
-
-      const popupContent = `
-        <div style="font-family: 'Roboto Mono', monospace; font-size: 11px; color: #334155; min-width: 170px; padding: 4px 2px;">
-          <!-- Header -->
-          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 8px;">
-            <span style="font-family: 'Lato', sans-serif; font-weight: 900; font-size: 13px; color: #0f172a; letter-spacing: -0.2px;">${wp.ident}</span>
-            <span style="font-family: 'Lato', sans-serif; font-size: 9px; font-weight: 800; background-color: #fee2e2; color: #ef4444; padding: 1.5px 6px; border-radius: 4px; text-transform: uppercase;">
-              ${stageBadgeText}
-            </span>
-          </div>
-          
-          <!-- Rows -->
-          <div style="display: flex; flex-direction: column; gap: 4px;">
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: #64748b;">Alt</span>
-              <span style="font-weight: 700; color: #0f172a;">FL${wp.fl}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: #64748b;">Hdg</span>
-              <span style="font-weight: 700; color: #0f172a;">${hdg}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: #64748b;">Airway</span>
-              <span style="font-weight: 700; color: #0f172a;">${airway}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: #64748b;">TAS</span>
-              <span style="font-weight: 700; color: #0f172a;">${tas}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: #64748b;">GS</span>
-              <span style="font-weight: 700; color: #0f172a;">${gs}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: #64748b;">Mach</span>
-              <span style="font-weight: 700; color: #0f172a;">${machStr}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: #64748b;">Wind</span>
-              <span style="font-weight: 700; color: #0f172a;">${wind}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: #64748b;">OAT</span>
-              <span style="font-weight: 700; color: #0f172a;">${oat}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: #64748b;">Fuel Rem</span>
-              <span style="font-weight: 700; color: #0f172a;">${fuelRemKg.toLocaleString('en-US')} kg</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: #64748b;">Fuel Used</span>
-              <span style="font-weight: 700; color: #0f172a;">${fuelUsedKg.toLocaleString('en-US')} kg</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: #64748b;">Leg Time</span>
-              <span style="font-weight: 700; color: #0f172a;">${legTime}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: #64748b;">Total</span>
-              <span style="font-weight: 700; color: #0f172a;">${totalTime}</span>
-            </div>
-          </div>
-        </div>
-      `;
-      marker.bindPopup(popupContent, { maxWidth: 220 });
+      addMapData();
     });
-
-    // Adjust map viewport to fit all points (main + alternate)
-    const latLns = [
-      ...waypoints.map(wp => [wp.lat, wp.lon] as [number, number]),
-      ...altWpsToRender.map(wp => [wp.lat, wp.lon] as [number, number])
-    ];
-    if (latLns.length > 0) {
-      const bounds = L.latLngBounds(latLns);
-      map.fitBounds(bounds, { padding: [50, 50] });
-    }
 
     return () => {
       map.remove();
-      leafletMapRef.current = null;
+      mapRef.current = null;
     };
-  }, [fixes, alternateFixes]);
+  }, [fixes, alternateFixes, styleKey, projection]);
+
+  const isDarkStyle = styleKey === 'cartodb-dark';
 
   return (
-    <div className="space-y-4">
-      <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2 font-sans border-b border-slate-100 pb-1.5">
-        🗺️ Projected Route Map
-      </h4>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+        <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2 font-sans">
+          🗺️ Projected Route Map
+        </h4>
+        <div className="flex items-center gap-4">
+          {/* Style Selector */}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-slate-400 font-extrabold uppercase">Style:</span>
+            <select
+              value={styleKey}
+              onChange={(e) => setStyleKey(e.target.value)}
+              className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white text-slate-700 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            >
+              <option value="cartodb-light">CartoDB Light</option>
+              <option value="cartodb-dark">CartoDB Dark</option>
+              <option value="cartodb-voyager">CartoDB Voyager</option>
+              <option value="osm-raster">OpenStreetMap Standard</option>
+            </select>
+          </div>
+          {/* Projection Switcher Toggle */}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-slate-400 font-extrabold uppercase">View:</span>
+            <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50">
+              <button
+                type="button"
+                onClick={() => setProjection('mercator')}
+                className={`text-xs px-2.5 py-1 rounded-md font-bold transition-all ${projection === 'mercator' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+              >
+                2D Flat
+              </button>
+              <button
+                type="button"
+                onClick={() => setProjection('globe')}
+                className={`text-xs px-2.5 py-1 rounded-md font-bold transition-all ${projection === 'globe' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+              >
+                3D Globe
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Map Container */}
       <div
-        ref={mapRef}
-        className="w-full h-[500px] rounded-2xl border border-slate-200 bg-slate-950 overflow-hidden shadow-sm"
-        style={{ position: 'relative', zIndex: 1 }}
+        ref={mapContainerRef}
+        className={`w-full h-[750px] rounded-2xl border border-slate-200 overflow-hidden shadow-sm transition-colors duration-250 ${isDarkStyle ? 'bg-slate-950' : 'bg-slate-50'}`}
+        style={{ position: 'relative' }}
       />
 
       {/* Horizontal Altitude Legend (FR24 Style) */}
@@ -985,10 +990,33 @@ const RouteMap = ({ fixes, alternateFixes = [], units }: { fixes: any[]; alterna
             <span className="absolute left-[65.6%] -translate-x-1/2">FL250</span>
             <span className="absolute left-[75%] -translate-x-1/2">FL300</span>
             <span className="absolute left-[84%] -translate-x-1/2">FL350</span>
-            <span className="absolute left-[97%] -translate-x-1/2">FL400+</span>
           </div>
         </div>
       </div>
+    </div>
+  );
+};
+
+const renderChartLinks = (icao: string) => {
+  if (!icao || icao === 'N/A') return null;
+  return (
+    <div className="flex items-center gap-1.5 ml-3 font-sans">
+      <a
+        href={`https://chartfox.org/${icao}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1 text-[9px] font-extrabold text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded hover:bg-orange-100 transition-colors shadow-sm"
+      >
+        🦊 Chartfox
+      </a>
+      <a
+        href={`https://charts.navigraph.com/airport/${icao}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1 text-[9px] font-extrabold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded hover:bg-red-100 transition-colors shadow-sm"
+      >
+        📈 Navigraph
+      </a>
     </div>
   );
 };
@@ -1309,7 +1337,7 @@ export default function ImportPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [ofpFilter, setOfpFilter] = useState('');
-  const [activeTab, setActiveTab] = useState<'general' | 'performance' | 'flight' | 'route' | 'map' | 'ofp' | 'raw' | 'images'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'performance' | 'flight' | 'weather' | 'route' | 'map' | 'ofp' | 'raw' | 'images'>('general');
 
   const [importedData, setImportedData] = useState<{
     flightContext: FlightContext;
@@ -1317,7 +1345,79 @@ export default function ImportPage() {
     raw: any;
   } | null>(flightData);
 
+  const vatsimPrefileUrl = importedData?.raw?.vatsim?.link || 
+    importedData?.raw?.prefile?.vatsim?.link || 
+    (importedData?.raw?.params?.ofp_id ? `https://www.simbrief.com/system/dispatch.php?prefile=vatsim&ofp_id=${importedData.raw.params.ofp_id}` : '');
+
+
+
   const [lastImportTime, setLastImportTime] = useState<string | null>(null);
+  const [expandedNotamAirports, setExpandedNotamAirports] = useState<Record<string, boolean>>({});
+
+  const toggleNotamsForAirport = (icao: string) => {
+    setExpandedNotamAirports(prev => ({
+      ...prev,
+      [icao]: !prev[icao]
+    }));
+  };
+
+  const renderAirportNotams = (icao: string | undefined) => {
+    if (!icao) return null;
+    const raw = importedData?.raw;
+    const notamsArray = raw?.notams;
+    if (!notamsArray || !Array.isArray(notamsArray)) return null;
+
+    // Filter NOTAMs for this specific airport
+    const list = notamsArray
+      .filter((n: any) => n && (n.icao_id || '').toUpperCase() === icao.toUpperCase())
+      .map((n: any) => {
+        const text = n.notam_text || n.notam_report || '';
+        return {
+          key: n.notam_id || 'NOTAM',
+          text: text.trim()
+        };
+      })
+      .filter((item: any) => item.text);
+
+    if (list.length === 0) return null;
+
+    const isExpanded = !!expandedNotamAirports[icao];
+
+    return (
+      <div className="border border-slate-200 rounded-xl overflow-hidden mt-3 transition-all duration-200">
+        <button
+          type="button"
+          onClick={() => toggleNotamsForAirport(icao)}
+          className="w-full px-4 py-2.5 flex items-center justify-between bg-slate-50/50 hover:bg-slate-50 transition-colors text-left border-b border-transparent focus:outline-none"
+          style={isExpanded ? { borderBottomColor: '#f1f5f9' } : {}}
+        >
+          <div className="flex items-center gap-2">
+            <ClipboardList className="w-3.5 h-3.5 text-slate-500" />
+            <span className="text-xs font-bold text-slate-700 font-sans">NOTAMs</span>
+            <span className="px-1.5 py-0.2 text-[9px] font-extrabold bg-indigo-50 text-indigo-650 border border-indigo-100 rounded-full">
+              {list.length}
+            </span>
+          </div>
+          <span className="text-slate-400">
+            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </span>
+        </button>
+
+        {isExpanded && (
+          <div className="p-4 bg-white space-y-2.5 max-h-[300px] overflow-y-auto custom-scrollbar">
+            {list.map((n: any, idx: number) => (
+              <div key={idx} className="bg-slate-50 border border-slate-150 rounded-xl p-3 space-y-1.5 hover:bg-slate-100/50 transition-colors">
+                <div className="flex items-center justify-between border-b border-slate-200/50 pb-1">
+                  <span className="font-bold text-[9px] text-slate-650 font-mono tracking-wide">{n.key}</span>
+                </div>
+                <pre className="text-[10px] text-slate-700 font-mono leading-relaxed whitespace-pre-wrap select-all font-medium break-all">{n.text}</pre>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const formatWeight = (val: any) => {
     const num = Number(val || 0);
@@ -1344,7 +1444,7 @@ export default function ImportPage() {
     setImportedData(null);
 
     try {
-      const res = await fetch(`https://www.simbrief.com/api/xml.fetcher.php?json=v2&userid=${encodeURIComponent(pilotId)}`);
+      const res = await fetch(`https://www.simbrief.com/api/xml.fetcher.php?json=v2&userid=${encodeURIComponent(pilotId)}&notams=1&firnot=1`);
       const rawData = await res.json();
 
       if (!res.ok) {
@@ -1500,6 +1600,15 @@ export default function ImportPage() {
               >
                 <Plane className="w-4 h-4" />
                 <span>AERODROMES</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('weather')}
+                className={`flex-1 py-3 px-3 text-center font-bold transition-all border-b-2 hover:bg-slate-100/50 flex items-center justify-center gap-1.5 ${activeTab === 'weather' ? 'border-indigo-650 text-indigo-600 bg-white font-extrabold' : 'border-transparent text-slate-500'
+                  }`}
+              >
+                <Cloud className="w-4 h-4" />
+                <span>WEATHER</span>
               </button>
               <button
                 type="button"
@@ -1768,10 +1877,314 @@ export default function ImportPage() {
                           </div>
                         </div>
                       </div>
+
+                      {/* VATSIM Prefile section */}
+                      {vatsimPrefileUrl && (
+                        <div className="card-panel border-indigo-100 bg-indigo-50/30 flex flex-col md:flex-row justify-between items-center gap-4 mt-6">
+                          <div>
+                            <h4 className="text-sm font-bold text-indigo-950 font-sans">VATSIM Prefile</h4>
+                            <p className="text-xs text-slate-500 mt-0.5 font-medium font-sans">Prefile your SimBrief operational flight plan (OFP) directly onto the VATSIM network.</p>
+                          </div>
+                          <a
+                            href={vatsimPrefileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-sm transition-colors cursor-pointer shrink-0 font-sans"
+                          >
+                            <Globe className="w-4 h-4" />
+                            Prefile on VATSIM
+                          </a>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
               )}
+
+                  {activeTab === 'weather' && (
+                    <div className="space-y-6 font-sans text-xs">
+                      {/* Windy Radar / Weather Map */}
+                      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+                        <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-2 font-sans">
+                          <Globe className="w-4 h-4 text-indigo-600" />
+                          <span>Live Meteorological Radar & Windy Overlay</span>
+                        </h3>
+                        {(() => {
+                          const originLat = Number(importedData.raw?.origin?.pos_lat || 0);
+                          const originLon = Number(importedData.raw?.origin?.pos_long || 0);
+                          if (!originLat && !originLon) {
+                            return (
+                              <div className="text-center py-6 text-slate-400 bg-slate-50 border border-slate-200 rounded-xl">
+                                Map unavailable (no airport coordinates found).
+                              </div>
+                            );
+                          }
+                          return (
+                            <div className="w-full h-[450px] rounded-xl overflow-hidden border border-slate-200 shadow-inner relative">
+                              <iframe
+                                src={`https://embed.windy.com/embed2.html?lat=${originLat}&lon=${originLon}&zoom=5&level=surface&overlay=radar&menu=&message=&marker=&calendar=&pressure=&type=map&location=coordinates&detail=&metricWind=kt&metricTemp=c&radarRange=1`}
+                                width="100%"
+                                height="100%"
+                                frameBorder="0"
+                                className="absolute inset-0"
+                              />
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      {/* METAR & TAF Panel */}
+                      <div className="space-y-6">
+                        <div className="flex items-center gap-2 px-1">
+                          <Cloud className="w-4 h-4 text-indigo-650" />
+                          <h3 className="text-sm font-bold text-slate-800 font-sans uppercase tracking-wider">METAR & TAF Briefing</h3>
+                        </div>
+
+                        {/* Origin (DEP) */}
+                        {(importedData.raw?.origin?.metar || importedData.raw?.origin?.taf) && (
+                          <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4 shadow-sm">
+                            <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                              <div className="flex items-center gap-3">
+                                <span className="text-[10px] text-indigo-650 bg-indigo-50 rounded border border-indigo-200 font-extrabold uppercase tracking-wider px-2 py-0.5 font-mono">DEP</span>
+                                <h3 className="text-lg font-black text-slate-800 flex items-baseline gap-2">
+                                  <span>{importedData.raw?.origin?.icao_code || 'N/A'} {importedData.raw?.origin?.iata_code ? `/ ${importedData.raw.origin.iata_code}` : ''}</span>
+                                  <span className="text-xs text-slate-400 font-medium font-sans">&mdash; {importedData.raw?.origin?.name || 'N/A'}</span>
+                                </h3>
+                              </div>
+                            </div>
+
+                            {/* Parsed METAR widgets */}
+                            {importedData.raw?.origin?.metar && (
+                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 py-1 text-xs">
+                                <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between shadow-sm">
+                                  <span className="text-slate-500 block text-[9px] uppercase font-extrabold">Wind</span>
+                                  <span className="text-slate-800 font-extrabold block mt-0.5 text-xs">{parseWindFromMetar(importedData.raw.origin.metar)}</span>
+                                </div>
+                                <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between shadow-sm">
+                                  <span className="text-slate-500 block text-[9px] uppercase font-extrabold">Visibility</span>
+                                  <span className="text-slate-800 font-extrabold block mt-0.5 text-xs">{parseVisFromMetar(importedData.raw.origin.metar)}</span>
+                                </div>
+                                <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between shadow-sm">
+                                  <span className="text-slate-500 block text-[9px] uppercase font-extrabold">Ceiling</span>
+                                  <span className="text-slate-800 font-extrabold block mt-0.5 text-xs">{parseCeilingFromMetar(importedData.raw.origin.metar)}</span>
+                                </div>
+                                <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between shadow-sm">
+                                  <span className="text-slate-500 block text-[9px] uppercase font-extrabold">Temperature</span>
+                                  <span className="text-slate-800 font-extrabold block mt-0.5 text-xs">{parseTempFromMetar(importedData.raw.origin.metar)}</span>
+                                </div>
+                                <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between shadow-sm">
+                                  <span className="text-slate-500 block text-[9px] uppercase font-extrabold">Dew Point</span>
+                                  <span className="text-slate-800 font-extrabold block mt-0.5 text-xs">{parseDewPointFromMetar(importedData.raw.origin.metar)}</span>
+                                </div>
+                                <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between shadow-sm">
+                                  <span className="text-slate-500 block text-[9px] uppercase font-extrabold">QNH</span>
+                                  <span className="text-slate-800 font-extrabold block mt-0.5 text-xs">{parseQnhFromMetar(importedData.raw.origin.metar)}</span>
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                              {importedData.raw?.origin?.metar && (
+                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow transition-shadow">
+                                  <span className="text-[9px] text-slate-500 font-extrabold block uppercase mb-1.5 font-sans tracking-wider">METAR</span>
+                                  <p className="text-xs text-slate-800 font-mono leading-relaxed select-all whitespace-pre-wrap font-medium">{importedData.raw.origin.metar}</p>
+                                </div>
+                              )}
+                              {importedData.raw?.origin?.taf && (
+                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow transition-shadow">
+                                  <span className="text-[9px] text-slate-500 font-extrabold block uppercase mb-1.5 font-sans tracking-wider">TAF</span>
+                                  <p className="text-xs text-slate-800 font-mono leading-relaxed select-all whitespace-pre-wrap font-medium">{importedData.raw.origin.taf}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Destination (ARR) */}
+                        {(importedData.raw?.destination?.metar || importedData.raw?.destination?.taf) && (
+                          <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4 shadow-sm">
+                            <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                              <div className="flex items-center gap-3">
+                                <span className="text-[10px] text-emerald-600 bg-emerald-50 rounded border border-emerald-250 font-extrabold uppercase tracking-wider px-2 py-0.5 font-mono">ARR</span>
+                                <h3 className="text-lg font-black text-slate-800 flex items-baseline gap-2">
+                                  <span>{importedData.raw?.destination?.icao_code || 'N/A'} {importedData.raw?.destination?.iata_code ? `/ ${importedData.raw.destination.iata_code}` : ''}</span>
+                                  <span className="text-xs text-slate-400 font-medium font-sans">&mdash; {importedData.raw?.destination?.name || 'N/A'}</span>
+                                </h3>
+                              </div>
+                            </div>
+
+                            {/* Parsed METAR widgets */}
+                            {importedData.raw?.destination?.metar && (
+                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 py-1 text-xs">
+                                <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between shadow-sm">
+                                  <span className="text-slate-500 block text-[9px] uppercase font-extrabold">Wind</span>
+                                  <span className="text-slate-800 font-extrabold block mt-0.5 text-xs">{parseWindFromMetar(importedData.raw.destination.metar)}</span>
+                                </div>
+                                <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between shadow-sm">
+                                  <span className="text-slate-500 block text-[9px] uppercase font-extrabold">Visibility</span>
+                                  <span className="text-slate-800 font-extrabold block mt-0.5 text-xs">{parseVisFromMetar(importedData.raw.destination.metar)}</span>
+                                </div>
+                                <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between shadow-sm">
+                                  <span className="text-slate-500 block text-[9px] uppercase font-extrabold">Ceiling</span>
+                                  <span className="text-slate-800 font-extrabold block mt-0.5 text-xs">{parseCeilingFromMetar(importedData.raw.destination.metar)}</span>
+                                </div>
+                                <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between shadow-sm">
+                                  <span className="text-slate-500 block text-[9px] uppercase font-extrabold">Temperature</span>
+                                  <span className="text-slate-800 font-extrabold block mt-0.5 text-xs">{parseTempFromMetar(importedData.raw.destination.metar)}</span>
+                                </div>
+                                <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between shadow-sm">
+                                  <span className="text-slate-500 block text-[9px] uppercase font-extrabold">Dew Point</span>
+                                  <span className="text-slate-800 font-extrabold block mt-0.5 text-xs">{parseDewPointFromMetar(importedData.raw.destination.metar)}</span>
+                                </div>
+                                <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between shadow-sm">
+                                  <span className="text-slate-500 block text-[9px] uppercase font-extrabold">QNH</span>
+                                  <span className="text-slate-800 font-extrabold block mt-0.5 text-xs">{parseQnhFromMetar(importedData.raw.destination.metar)}</span>
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                              {importedData.raw?.destination?.metar && (
+                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow transition-shadow">
+                                  <span className="text-[9px] text-slate-500 font-extrabold block uppercase mb-1.5 font-sans tracking-wider">METAR</span>
+                                  <p className="text-xs text-slate-800 font-mono leading-relaxed select-all whitespace-pre-wrap font-medium">{importedData.raw.destination.metar}</p>
+                                </div>
+                              )}
+                              {importedData.raw?.destination?.taf && (
+                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow transition-shadow">
+                                  <span className="text-[9px] text-slate-500 font-extrabold block uppercase mb-1.5 font-sans tracking-wider">TAF</span>
+                                  <p className="text-xs text-slate-800 font-mono leading-relaxed select-all whitespace-pre-wrap font-medium">{importedData.raw.destination.taf}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Alternates (ALTN) */}
+                        {(() => {
+                          const alternatesList = Array.isArray(importedData.raw?.alternate)
+                            ? importedData.raw.alternate
+                            : importedData.raw?.alternate
+                              ? [importedData.raw.alternate]
+                              : [];
+
+                          if (alternatesList.length === 0) return null;
+
+                          return alternatesList.map((alt: any, idx: number) => {
+                            if (!alt.metar && !alt.taf) return null;
+                            return (
+                              <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4 shadow-sm">
+                                <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-[10px] text-amber-650 bg-amber-50 rounded border border-amber-200 font-extrabold uppercase tracking-wider px-2 py-0.5 font-mono">
+                                      ALTN {idx + 1}
+                                    </span>
+                                    <h3 className="text-lg font-black text-slate-800 flex items-baseline gap-2">
+                                      <span>{alt.icao_code || 'N/A'} {alt.iata_code ? `/ ${alt.iata_code}` : ''}</span>
+                                      <span className="text-xs text-slate-400 font-medium font-sans">&mdash; {alt.name || 'N/A'}</span>
+                                    </h3>
+                                  </div>
+                                </div>
+
+                                {/* Parsed METAR widgets */}
+                                {alt.metar && (
+                                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 py-1 text-xs">
+                                    <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between shadow-sm">
+                                      <span className="text-slate-500 block text-[9px] uppercase font-extrabold">Wind</span>
+                                      <span className="text-slate-800 font-extrabold block mt-0.5 text-xs">{parseWindFromMetar(alt.metar)}</span>
+                                    </div>
+                                    <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between shadow-sm">
+                                      <span className="text-slate-500 block text-[9px] uppercase font-extrabold">Visibility</span>
+                                      <span className="text-slate-800 font-extrabold block mt-0.5 text-xs">{parseVisFromMetar(alt.metar)}</span>
+                                    </div>
+                                    <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between shadow-sm">
+                                      <span className="text-slate-500 block text-[9px] uppercase font-extrabold">Ceiling</span>
+                                      <span className="text-slate-800 font-extrabold block mt-0.5 text-xs">{parseCeilingFromMetar(alt.metar)}</span>
+                                    </div>
+                                    <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between shadow-sm">
+                                      <span className="text-slate-500 block text-[9px] uppercase font-extrabold">Temperature</span>
+                                      <span className="text-slate-800 font-extrabold block mt-0.5 text-xs">{parseTempFromMetar(alt.metar)}</span>
+                                    </div>
+                                    <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between shadow-sm">
+                                      <span className="text-slate-500 block text-[9px] uppercase font-extrabold">Dew Point</span>
+                                      <span className="text-slate-800 font-extrabold block mt-0.5 text-xs">{parseDewPointFromMetar(alt.metar)}</span>
+                                    </div>
+                                    <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between shadow-sm">
+                                      <span className="text-slate-500 block text-[9px] uppercase font-extrabold">QNH</span>
+                                      <span className="text-slate-800 font-extrabold block mt-0.5 text-xs">{parseQnhFromMetar(alt.metar)}</span>
+                                    </div>
+                                  </div>
+                                )}
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                                  {alt.metar && (
+                                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow transition-shadow">
+                                      <span className="text-[9px] text-slate-500 font-extrabold block uppercase mb-1.5 font-sans tracking-wider">METAR</span>
+                                      <p className="text-xs text-slate-800 font-mono leading-relaxed select-all whitespace-pre-wrap font-medium">{alt.metar}</p>
+                                    </div>
+                                  )}
+                                  {alt.taf && (
+                                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow transition-shadow">
+                                      <span className="text-[9px] text-slate-500 font-extrabold block uppercase mb-1.5 font-sans tracking-wider">TAF</span>
+                                      <p className="text-xs text-slate-800 font-mono leading-relaxed select-all whitespace-pre-wrap font-medium">{alt.taf}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+
+                      {/* SIGMETs BRIEFING */}
+                      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+                        <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-2 font-sans">
+                          <AlertCircle className="w-4 h-4 text-amber-500" />
+                          <span>SIGMETs (Significant Meteorological Information)</span>
+                        </h3>
+                        {(() => {
+                          const sigmets = importedData?.raw?.sigmets;
+                          if (!sigmets) {
+                            return (
+                              <div className="text-center py-6 text-slate-400 bg-slate-50 border border-slate-200 rounded-xl">
+                                No active SIGMETs for route.
+                              </div>
+                            );
+                          }
+
+                          const sigmetsArray = Array.isArray(sigmets) ? sigmets : [sigmets];
+                          const validSigmets = sigmetsArray.filter((s: any) => s && (s.text || s.report || typeof s === 'string'));
+
+                          if (validSigmets.length === 0) {
+                            return (
+                              <div className="text-center py-6 text-slate-400 bg-slate-50 border border-slate-200 rounded-xl">
+                                No active SIGMETs for route.
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div className="space-y-4">
+                              {validSigmets.map((s: any, idx: number) => {
+                                const text = s.text || s.report || (typeof s === 'string' ? s : '');
+                                const fir = s.fir_name || s.fir_icao || s.icao || s.fir || 'SIGMET';
+                                const keyName = s.key || s.number || `SIGMET #${idx + 1}`;
+                                return (
+                                  <div key={idx} className="bg-white border border-slate-200/80 border-l-4 border-l-amber-500 rounded-xl p-4 shadow-sm space-y-2 hover:shadow transition-all duration-200">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-extrabold text-[10px] text-amber-700 bg-amber-50 border border-amber-100 rounded-md px-2 py-0.5 font-mono">{fir}</span>
+                                      <span className="font-bold text-[9px] text-slate-500 font-mono tracking-wide">{keyName}</span>
+                                    </div>
+                                    <pre className="text-[10px] text-slate-700 font-mono leading-relaxed whitespace-pre-wrap select-all font-medium break-all pt-1 border-t border-slate-100 mt-2">{text}</pre>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  )}
 
               {activeTab === 'ofp' && (
                 <div className="space-y-4 font-mono text-xs flex flex-col flex-grow">
@@ -1835,6 +2248,7 @@ export default function ImportPage() {
                       </div>
                     )}
                   </div>
+
                 </div>
               )}
 
@@ -2117,6 +2531,8 @@ export default function ImportPage() {
                         </div>
                       );
                     })()}
+
+
                   </div>
                 </div>
               )}
@@ -2130,9 +2546,10 @@ export default function ImportPage() {
                       <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                         <div className="flex items-center gap-3">
                           <span className="text-[10px] text-indigo-600 font-extrabold uppercase tracking-wider px-2 py-0.5 bg-indigo-50 rounded border border-indigo-200">DEP</span>
-                          <h3 className="text-lg font-black text-slate-800 flex items-baseline gap-2">
+                          <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
                             <span>{importedData.raw?.origin?.icao_code || 'N/A'} {importedData.raw?.origin?.iata_code ? `/ ${importedData.raw.origin.iata_code}` : ''}</span>
                             <span className="text-xs text-slate-400 font-medium font-sans">&mdash; {importedData.raw?.origin?.name || 'N/A'}</span>
+                            {renderChartLinks(importedData.raw?.origin?.icao_code)}
                           </h3>
                         </div>
                         <div className="flex items-center gap-4 text-xs font-sans text-slate-500">
@@ -2141,66 +2558,11 @@ export default function ImportPage() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 py-1 text-xs">
-                        {/* Vento */}
-                        <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between">
-                          <span className="text-slate-500 block text-[9px] uppercase font-extrabold flex items-center">
-                            Wind
-                          </span>
-                          <span className="text-slate-800 font-extrabold block mt-0.5 text-sm">{parseWindFromMetar(importedData.raw?.origin?.metar)}</span>
-                        </div>
 
-                        {/* Visibilidade */}
-                        <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between">
-                          <span className="text-slate-500 block text-[9px] uppercase font-extrabold flex items-center">
-                            Visibility
-                          </span>
-                          <span className="text-slate-800 font-extrabold block mt-0.5 text-sm">{parseVisFromMetar(importedData.raw?.origin?.metar)}</span>
-                        </div>
 
-                        {/* Teto */}
-                        <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between">
-                          <span className="text-slate-500 block text-[9px] uppercase font-extrabold flex items-center">
-                            Ceiling
-                          </span>
-                          <span className="text-slate-800 font-extrabold block mt-0.5 text-sm">{parseCeilingFromMetar(importedData.raw?.origin?.metar)}</span>
-                        </div>
 
-                        {/* Temperatura */}
-                        <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between">
-                          <span className="text-slate-500 block text-[9px] uppercase font-extrabold">Temperature</span>
-                          <span className="text-slate-800 font-extrabold block mt-0.5 text-sm">{parseTempFromMetar(importedData.raw?.origin?.metar)}</span>
-                        </div>
 
-                        {/* Ponto de Orvalho */}
-                        <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between">
-                          <span className="text-slate-500 block text-[9px] uppercase font-extrabold">Dew Point</span>
-                          <span className="text-slate-800 font-extrabold block mt-0.5 text-sm">{parseDewPointFromMetar(importedData.raw?.origin?.metar)}</span>
-                        </div>
-
-                        {/* QNH */}
-                        <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between">
-                          <span className="text-slate-500 block text-[9px] uppercase font-extrabold">QNH</span>
-                          <span className="text-slate-800 font-extrabold block mt-0.5 text-sm">{parseQnhFromMetar(importedData.raw?.origin?.metar)}</span>
-                        </div>
-                      </div>
-
-                      {(importedData.raw?.origin?.metar || importedData.raw?.origin?.taf) && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                          {importedData.raw?.origin?.metar && (
-                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-                              <span className="text-[9px] text-slate-500 font-bold block uppercase mb-1">METAR</span>
-                              <p className="text-xs text-slate-700 font-mono leading-relaxed select-all whitespace-pre-wrap">{importedData.raw.origin.metar}</p>
-                            </div>
-                          )}
-                          {importedData.raw?.origin?.taf && (
-                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-                              <span className="text-[9px] text-slate-500 font-bold block uppercase mb-1">TAF</span>
-                              <p className="text-xs text-slate-700 font-mono leading-relaxed select-all whitespace-pre-wrap">{importedData.raw.origin.taf}</p>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                      {renderAirportNotams(importedData.raw?.origin?.icao_code)}
                     </div>
 
                     {/* Destino */}
@@ -2208,9 +2570,10 @@ export default function ImportPage() {
                       <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                         <div className="flex items-center gap-3">
                           <span className="text-[10px] text-emerald-600 font-extrabold uppercase tracking-wider px-2 py-0.5 bg-emerald-50 rounded border border-emerald-250">ARR</span>
-                          <h3 className="text-lg font-black text-slate-800 flex items-baseline gap-2">
+                          <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
                             <span>{importedData.raw?.destination?.icao_code || 'N/A'} {importedData.raw?.destination?.iata_code ? `/ ${importedData.raw.destination.iata_code}` : ''}</span>
                             <span className="text-xs text-slate-400 font-medium font-sans">&mdash; {importedData.raw?.destination?.name || 'N/A'}</span>
+                            {renderChartLinks(importedData.raw?.destination?.icao_code)}
                           </h3>
                         </div>
                         <div className="flex items-center gap-4 text-xs font-sans text-slate-500">
@@ -2219,66 +2582,11 @@ export default function ImportPage() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 py-1 text-xs">
-                        {/* Vento */}
-                        <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between">
-                          <span className="text-slate-500 block text-[9px] uppercase font-extrabold flex items-center">
-                            Wind
-                          </span>
-                          <span className="text-slate-800 font-extrabold block mt-0.5 text-sm">{parseWindFromMetar(importedData.raw?.destination?.metar)}</span>
-                        </div>
 
-                        {/* Visibilidade */}
-                        <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between">
-                          <span className="text-slate-500 block text-[9px] uppercase font-extrabold flex items-center">
-                            Visibility
-                          </span>
-                          <span className="text-slate-800 font-extrabold block mt-0.5 text-sm">{parseVisFromMetar(importedData.raw?.destination?.metar)}</span>
-                        </div>
 
-                        {/* Teto */}
-                        <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between">
-                          <span className="text-slate-500 block text-[9px] uppercase font-extrabold flex items-center">
-                            Ceiling
-                          </span>
-                          <span className="text-slate-800 font-extrabold block mt-0.5 text-sm">{parseCeilingFromMetar(importedData.raw?.destination?.metar)}</span>
-                        </div>
 
-                        {/* Temperatura */}
-                        <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between">
-                          <span className="text-slate-500 block text-[9px] uppercase font-extrabold">Temperature</span>
-                          <span className="text-slate-800 font-extrabold block mt-0.5 text-sm">{parseTempFromMetar(importedData.raw?.destination?.metar)}</span>
-                        </div>
 
-                        {/* Ponto de Orvalho */}
-                        <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between">
-                          <span className="text-slate-500 block text-[9px] uppercase font-extrabold">Dew Point</span>
-                          <span className="text-slate-800 font-extrabold block mt-0.5 text-sm">{parseDewPointFromMetar(importedData.raw?.destination?.metar)}</span>
-                        </div>
-
-                        {/* QNH */}
-                        <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between">
-                          <span className="text-slate-500 block text-[9px] uppercase font-extrabold">QNH</span>
-                          <span className="text-slate-800 font-extrabold block mt-0.5 text-sm">{parseQnhFromMetar(importedData.raw?.destination?.metar)}</span>
-                        </div>
-                      </div>
-
-                      {(importedData.raw?.destination?.metar || importedData.raw?.destination?.taf) && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                          {importedData.raw?.destination?.metar && (
-                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-                              <span className="text-[9px] text-slate-500 font-bold block uppercase mb-1">METAR</span>
-                              <p className="text-xs text-slate-700 font-mono leading-relaxed select-all whitespace-pre-wrap">{importedData.raw.destination.metar}</p>
-                            </div>
-                          )}
-                          {importedData.raw?.destination?.taf && (
-                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-                              <span className="text-[9px] text-slate-500 font-bold block uppercase mb-1">TAF</span>
-                              <p className="text-xs text-slate-700 font-mono leading-relaxed select-all whitespace-pre-wrap">{importedData.raw.destination.taf}</p>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                      {renderAirportNotams(importedData.raw?.destination?.icao_code)}
                     </div>
 
                     {/* Alternados */}
@@ -2296,9 +2604,10 @@ export default function ImportPage() {
                               <span className="text-[10px] text-amber-600 font-extrabold uppercase tracking-wider px-2 py-0.5 bg-amber-50 rounded border border-amber-200">
                                 ALTN {idx + 1}
                               </span>
-                              <h3 className="text-lg font-black text-slate-800 flex items-baseline gap-2">
+                              <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
                                 <span>{alt.icao_code || 'N/A'} {alt.iata_code ? `/ ${alt.iata_code}` : ''}</span>
                                 <span className="text-xs text-slate-400 font-medium font-sans">&mdash; {alt.name || 'N/A'}</span>
+                                {renderChartLinks(alt.icao_code)}
                               </h3>
                             </div>
                             <div className="flex items-center gap-4 text-xs font-sans text-slate-500">
@@ -2307,66 +2616,9 @@ export default function ImportPage() {
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 py-1 text-xs">
-                            {/* Vento */}
-                            <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between">
-                              <span className="text-slate-500 block text-[9px] uppercase font-extrabold flex items-center">
-                                Wind
-                              </span>
-                              <span className="text-slate-800 font-extrabold block mt-0.5 text-sm">{parseWindFromMetar(alt.metar)}</span>
-                            </div>
 
-                            {/* Visibilidade */}
-                            <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between">
-                              <span className="text-slate-500 block text-[9px] uppercase font-extrabold flex items-center">
-                                Visibility
-                              </span>
-                              <span className="text-slate-800 font-extrabold block mt-0.5 text-sm">{parseVisFromMetar(alt.metar)}</span>
-                            </div>
 
-                            {/* Teto */}
-                            <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between">
-                              <span className="text-slate-500 block text-[9px] uppercase font-extrabold flex items-center">
-                                Ceiling
-                              </span>
-                              <span className="text-slate-800 font-extrabold block mt-0.5 text-sm">{parseCeilingFromMetar(alt.metar)}</span>
-                            </div>
 
-                            {/* Temperatura */}
-                            <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between">
-                              <span className="text-slate-500 block text-[9px] uppercase font-extrabold">Temperature</span>
-                              <span className="text-slate-800 font-extrabold block mt-0.5 text-sm">{parseTempFromMetar(alt.metar)}</span>
-                            </div>
-
-                            {/* Ponto de Orvalho */}
-                            <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between">
-                              <span className="text-slate-500 block text-[9px] uppercase font-extrabold">Dew Point</span>
-                              <span className="text-slate-800 font-extrabold block mt-0.5 text-sm">{parseDewPointFromMetar(alt.metar)}</span>
-                            </div>
-
-                            {/* QNH */}
-                            <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-between">
-                              <span className="text-slate-500 block text-[9px] uppercase font-extrabold">QNH</span>
-                              <span className="text-slate-800 font-extrabold block mt-0.5 text-sm">{parseQnhFromMetar(alt.metar)}</span>
-                            </div>
-                          </div>
-
-                          {(alt.metar || alt.taf) && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                              {alt.metar && (
-                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-                                  <span className="text-[9px] text-slate-500 font-bold block uppercase mb-1">METAR</span>
-                                  <p className="text-xs text-slate-700 font-mono leading-relaxed select-all whitespace-pre-wrap">{alt.metar}</p>
-                                </div>
-                              )}
-                              {alt.taf && (
-                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-                                  <span className="text-[9px] text-slate-500 font-bold block uppercase mb-1">TAF</span>
-                                  <p className="text-xs text-slate-700 font-mono leading-relaxed select-all whitespace-pre-wrap">{alt.taf}</p>
-                                </div>
-                              )}
-                            </div>
-                          )}
                         </div>
                       ));
                     })()}
@@ -2583,6 +2835,16 @@ export default function ImportPage() {
                   fixes={getNavlogFixes(importedData.raw)}
                   alternateFixes={getAlternateNavlogFixes(importedData.raw)}
                   units={importedData.raw?.params?.units || 'lbs'}
+                  origin={{
+                    ident: importedData.raw?.origin?.icao_code || importedData.raw?.origin?.iata_code || 'ORIGIN',
+                    lat: Number(importedData.raw?.origin?.pos_lat || importedData.raw?.origin?.lat || 0),
+                    lon: Number(importedData.raw?.origin?.pos_long || importedData.raw?.origin?.lon || 0)
+                  }}
+                  destination={{
+                    ident: importedData.raw?.destination?.icao_code || importedData.raw?.destination?.iata_code || 'DEST',
+                    lat: Number(importedData.raw?.destination?.pos_lat || importedData.raw?.destination?.lat || 0),
+                    lon: Number(importedData.raw?.destination?.pos_long || importedData.raw?.destination?.lon || 0)
+                  }}
                 />
               )}
 

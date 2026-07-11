@@ -5,6 +5,8 @@ import { calculateISA } from '@classic-flight-engineer/performance-engine';
 import { useApp } from '../../components/AppContext';
 import { asFeet, asCelsius } from '@classic-flight-engineer/aviation-domain';
 
+import { TrendingUp } from 'lucide-react';
+
 export default function ClimbPlannerPage() {
   const { flightData } = useApp();
   // Convert kg back to lbs for display weight if present in flight context, or use standard default
@@ -34,10 +36,17 @@ export default function ClimbPlannerPage() {
   const climbDistanceNm = (climbTimeMin / 60) * 320;
 
   return (
-    <main className="space-y-6 max-w-5xl">
-      <header className="border-b border-slate-200 pb-4">
-        <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 font-sans">CLIMB PERFORMANCE PLANNER</h1>
-        <p className="text-sm text-slate-500 mt-1 font-medium">Calculate climb segments, target rates, and fuel parameters.</p>
+    <div className="space-y-6 w-full">
+      <header className="pb-2 flex items-center gap-3 border-b border-slate-200/60">
+        <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-100/80 shadow-sm shrink-0">
+          <TrendingUp className="w-6 h-6" />
+        </div>
+        <div>
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight font-sans uppercase">
+            Climb Performance Planner
+          </h1>
+          <p className="text-slate-500 font-medium text-xs mt-0.5">Calculate climb segments, target rates, and fuel parameters.</p>
+        </div>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -136,6 +145,6 @@ export default function ClimbPlannerPage() {
           </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

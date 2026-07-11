@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "@classic-flight-engineer/aviation-domain": "workspace:*",
-    "@classic-flight-engineer/aircraft-data": "workspace:*"
+    "@classic-flight-engineer/aircraft-data": "workspace:*",
+    "@classic-flight-engineer/unit-system": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.3.3",

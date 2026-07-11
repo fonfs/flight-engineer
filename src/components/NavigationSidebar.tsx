@@ -11,7 +11,8 @@ import {
   Scale, 
   Wrench, 
   BookOpen, 
-  Settings 
+  Settings,
+  Calculator
 } from 'lucide-react';
 
 interface SidebarItem {
@@ -28,6 +29,7 @@ export default function NavigationSidebar() {
   const items: SidebarItem[] = [
     { label: 'Home', route: '/', icon: Plane },
     { label: 'SimBrief Import', route: '/import', icon: Cloud },
+    { label: 'Takeoff Calculator', route: '/takeoff-calculator', icon: Calculator },
     { label: 'Climb Planner', route: '/subida', icon: TrendingUp },
     { label: 'Vertical Profile', route: '/perfil', icon: LineChart },
     { label: 'Atmosphere (ISA)', route: '/atmosfera', icon: Thermometer },

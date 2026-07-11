@@ -104,3 +104,5 @@ export interface TableDefinition {
   yGrid?: number[];  // Array of independent y values (sorted ascending)
   zValues: number[] | number[][]; // Output matrix matching grid lengths
 }
+
+export * as B742_Takeoff_Derate from './boeing-747-200/engines/jt9d/takeoff-derate';

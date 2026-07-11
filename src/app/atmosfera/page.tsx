@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { calculateISA, speedOfSoundKnots } from '@classic-flight-engineer/performance-engine';
 import { asFeet, asCelsius } from '@classic-flight-engineer/aviation-domain';
 
+import { Thermometer } from 'lucide-react';
+
 export default function AtmosferaPage() {
   const [altitude, setAltitude] = useState(30000);
   const [temperature, setTemperature] = useState(-45);
@@ -12,10 +14,17 @@ export default function AtmosferaPage() {
   const soundSpeed = speedOfSoundKnots(asCelsius(temperature));
 
   return (
-    <main className="space-y-6 max-w-4xl">
-      <header className="border-b border-slate-200 pb-4">
-        <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 font-sans">ATMOSPHERE CALCULATOR // ISA</h1>
-        <p className="text-sm text-slate-500 mt-1 font-medium">International Standard Atmosphere temperature, pressure, and sound speed ratios.</p>
+    <div className="space-y-6 w-full">
+      <header className="pb-2 flex items-center gap-3 border-b border-slate-200/60">
+        <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-100/80 shadow-sm shrink-0">
+          <Thermometer className="w-6 h-6" />
+        </div>
+        <div>
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight font-sans uppercase">
+            Atmosphere Calculator (ISA)
+          </h1>
+          <p className="text-slate-500 font-medium text-xs mt-0.5">International Standard Atmosphere temperature, pressure, and sound speed ratios.</p>
+        </div>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -69,6 +78,6 @@ export default function AtmosferaPage() {
           </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

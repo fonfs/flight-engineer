@@ -10,6 +10,7 @@ import ClimbPlannerPage from './app/subida/page';
 import PerfilPage from './app/perfil/page';
 import AtmosferaPage from './app/atmosfera/page';
 import ConversorPage from './app/conversor/page';
+import TakeoffCalculatorPage from './app/takeoff-calculator/page';
 import AeronavesPage from './app/aeronaves/page';
 import FontesPage from './app/fontes/page';
 import ConfigPage from './app/config/page';
@@ -38,6 +39,7 @@ export default function App() {
             <Route path="/perfil" element={<PerfilPage />} />
             <Route path="/atmosfera" element={<AtmosferaPage />} />
             <Route path="/conversor" element={<ConversorPage />} />
+            <Route path="/takeoff-calculator" element={<TakeoffCalculatorPage />} />
             <Route path="/aeronaves" element={<AeronavesPage />} />
             <Route path="/fontes" element={<FontesPage />} />
             <Route path="/config" element={<ConfigPage />} />

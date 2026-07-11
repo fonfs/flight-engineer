@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import { kgToLbs, lbsToKg, asKilograms, asPounds } from '@classic-flight-engineer/unit-system';
 
+import { Scale } from 'lucide-react';
+
 export default function ConversorPage() {
   const [lbsValue, setLbsValue] = useState(10000);
   const [kgValue, setKgValue] = useState(4536);
@@ -11,10 +13,17 @@ export default function ConversorPage() {
   const convertedLbs = kgToLbs(asKilograms(kgValue)).toFixed(0);
 
   return (
-    <main className="space-y-6 max-w-4xl">
-      <header className="border-b border-slate-200 pb-4">
-        <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 font-sans">UNIT CONVERTER // WEIGHT SYSTEM</h1>
-        <p className="text-sm text-slate-500 mt-1 font-medium">Convert aviation weights between Pounds and Kilograms safely.</p>
+    <div className="space-y-6 w-full">
+      <header className="pb-2 flex items-center gap-3 border-b border-slate-200/60">
+        <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-100/80 shadow-sm shrink-0">
+          <Scale className="w-6 h-6" />
+        </div>
+        <div>
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight font-sans uppercase">
+            Unit Converter
+          </h1>
+          <p className="text-slate-500 font-medium text-xs mt-0.5">Convert aviation weights between Pounds and Kilograms safely.</p>
+        </div>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -58,6 +67,6 @@ export default function ConversorPage() {
           </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

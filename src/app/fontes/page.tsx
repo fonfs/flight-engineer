@@ -1,4 +1,4 @@
-import React from 'react';
+import { BookOpen } from 'lucide-react';
 
 export default function FontesPage() {
   const references = [
@@ -17,10 +17,17 @@ export default function FontesPage() {
   ];
 
   return (
-    <main className="space-y-6 max-w-4xl">
-      <header className="border-b border-slate-200 pb-4">
-        <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 font-sans">DATA REVISIONS & SOURCES</h1>
-        <p className="text-sm text-slate-500 mt-1 font-medium">Audit logs of aviation charts and calculation matrices.</p>
+    <div className="space-y-6 w-full">
+      <header className="pb-2 flex items-center gap-3 border-b border-slate-200/60">
+        <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-100/80 shadow-sm shrink-0">
+          <BookOpen className="w-6 h-6" />
+        </div>
+        <div>
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight font-sans uppercase">
+            Data Revisions & Sources
+          </h1>
+          <p className="text-slate-500 font-medium text-xs mt-0.5">Audit logs of aviation charts and calculation matrices.</p>
+        </div>
       </header>
 
       <div className="space-y-6">
@@ -42,6 +49,6 @@ export default function FontesPage() {
           </div>
         ))}
       </div>
-    </main>
+    </div>
   );
 }
