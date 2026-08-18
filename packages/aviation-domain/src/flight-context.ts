@@ -21,6 +21,26 @@ export interface EstimatedPhaseTimes {
   totalBlockMinutes: number;
 }
 
+export interface TLRSpeeds {
+  takeoff?: {
+    v1?: Knots;
+    vr?: Knots;
+    v2?: Knots;
+    flaps?: string;
+    assumedTemp?: Celsius;
+    thrustRating?: string;
+    runway?: string;
+  };
+  landing?: {
+    vref?: Knots;
+    vapp?: Knots;
+    vga?: Knots;
+    flaps?: string;
+    autobrake?: string;
+    runway?: string;
+  };
+}
+
 export interface FlightContext {
   flightNumber: string;
   callsign: string;
@@ -48,4 +68,6 @@ export interface FlightContext {
   departurePressure: Hectopascals;
   windData: WindPoint[];
   estimatedTimes: EstimatedPhaseTimes;
+  tlrSpeeds?: TLRSpeeds;
 }
+

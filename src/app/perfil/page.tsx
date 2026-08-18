@@ -213,6 +213,11 @@ export default function PerfilPage() {
     String(f.ident || '').toUpperCase().includes('TOD')
   );
   const todFix = todIndex >= 0 ? rawFixes[todIndex] : null;
+  const nextFixAfterTod = (todIndex >= 0 && todIndex + 1 < rawFixes.length) ? rawFixes[todIndex + 1] : null;
+  const nextFixDist = nextFixAfterTod ? Number(nextFixAfterTod.distance || 0) : 0;
+  const nextFixText = nextFixAfterTod
+    ? `${nextFixDist > 0 ? Math.round(nextFixDist) : '0'} nm to ${nextFixAfterTod.ident || '—'}`
+    : '—';
 
   // Altitude at TOD (feet). SimBrief provides altitude_feet directly.
   const todAltitudeFt = todFix
@@ -403,8 +408,8 @@ export default function PerfilPage() {
             {/* Input parameters row */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs font-sans">
               <div className="bg-amber-50 border border-amber-200/80 rounded-xl p-3 space-y-1">
-                <span className="text-[9px] text-amber-600 font-extrabold block uppercase tracking-wider">TOD Fix</span>
-                <span className="text-sm font-extrabold text-slate-800">{todFix?.ident || '—'}</span>
+                <span className="text-[9px] text-amber-600 font-extrabold block uppercase tracking-wider">Next Fix</span>
+                <span className="text-sm font-extrabold text-slate-800">{nextFixText}</span>
               </div>
               <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 space-y-1">
                 <span className="text-[9px] text-slate-500 font-extrabold block uppercase tracking-wider">Cruise Altitude</span>

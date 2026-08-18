@@ -62,4 +62,40 @@ describe('SimBrief Adapter normalization tests', () => {
     expect(result.warnings).toContain('Fix XYZ has incomplete wind data. Omitted.');
     expect(result.flightContext.windData.length).toBe(0);
   });
+
+  it('parses TLR takeoff and landing speeds correctly when present', () => {
+    const tlrFixture = {
+      ...fixture,
+      tlr: {
+        takeoff: {
+          v1: '145',
+          vr: '152',
+          v2: '160',
+          flaps: '10',
+          assumed_temp: '42',
+          thrust: 'TOGA',
+          runway: '15',
+        },
+        landing: {
+          vref: '138',
+          vapp: '143',
+          vga: '150',
+          flaps: '30',
+          autobrake: 'MED',
+          runway: '04R',
+        },
+      },
+    };
+
+    const result = parseAndNormalizeSimBrief(tlrFixture);
+    expect(result.flightContext.tlrSpeeds).toBeDefined();
+    expect(result.flightContext.tlrSpeeds?.takeoff?.v1).toBe(145);
+    expect(result.flightContext.tlrSpeeds?.takeoff?.vr).toBe(152);
+    expect(result.flightContext.tlrSpeeds?.takeoff?.v2).toBe(160);
+    expect(result.flightContext.tlrSpeeds?.takeoff?.flaps).toBe('10');
+    expect(result.flightContext.tlrSpeeds?.landing?.vref).toBe(138);
+    expect(result.flightContext.tlrSpeeds?.landing?.vapp).toBe(143);
+    expect(result.flightContext.tlrSpeeds?.landing?.vga).toBe(150);
+  });
 });
+

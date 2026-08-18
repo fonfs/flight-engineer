@@ -110,6 +110,44 @@ export function parseAndNormalizeSimBrief(raw: any): SimBriefAdapterResult {
     }
   }
 
+  // Parse TLR speeds if present in raw SimBrief response
+  const rawTlr = raw.tlr || {};
+  const rawTakeoff = rawTlr.takeoff || rawTlr.takeoff_data || raw.takeoff || {};
+  const rawLanding = rawTlr.landing || rawTlr.landing_data || raw.landing || {};
+
+  const plannedToRwy = String(rawTakeoff.conditions?.planned_runway || origin.plan_rwy || '');
+  const toRunways = Array.isArray(rawTakeoff.runway) ? rawTakeoff.runway : (rawTakeoff.runway ? [rawTakeoff.runway] : []);
+  const matchedToRwy = toRunways.find((r: any) => String(r.identifier || r.ident || r.name) === plannedToRwy) || toRunways.find((r: any) => r.speeds_v1 || r.v1) || toRunways[0] || {};
+
+  const v1Num = Number(matchedToRwy.speeds_v1 || rawTakeoff.v1 || rawTlr.v1 || 0);
+  const vrNum = Number(matchedToRwy.speeds_vr || rawTakeoff.vr || rawTlr.vr || 0);
+  const v2Num = Number(matchedToRwy.speeds_v2 || rawTakeoff.v2 || rawTlr.v2 || 0);
+
+  const ldgDistBlock = rawLanding.distance_wet || rawLanding.distance_dry || {};
+  const vrefNum = Number(ldgDistBlock.speeds_vref || rawLanding.vref || rawTlr.vref || 0);
+  const vappNum = Number(ldgDistBlock.speeds_vapp || rawLanding.vapp || rawTlr.vapp || (vrefNum > 0 ? vrefNum + 5 : 0));
+  const vgaNum = Number(ldgDistBlock.speeds_vga || rawLanding.vga || rawTlr.vga || (vrefNum > 0 ? vrefNum + 15 : 0));
+
+  const tlrSpeeds = (v1Num > 0 || vrNum > 0 || v2Num > 0 || vrefNum > 0) ? {
+    takeoff: {
+      ...(v1Num > 0 && { v1: asKnots(v1Num) }),
+      ...(vrNum > 0 && { vr: asKnots(vrNum) }),
+      ...(v2Num > 0 && { v2: asKnots(v2Num) }),
+      flaps: matchedToRwy.flap_setting || rawTakeoff.conditions?.flap_setting || rawTakeoff.flaps || undefined,
+      assumedTemp: (matchedToRwy.flex_temperature || rawTakeoff.flex) ? asCelsius(Number(matchedToRwy.flex_temperature || rawTakeoff.flex)) : undefined,
+      thrustRating: matchedToRwy.thrust_setting || rawTakeoff.thrust || undefined,
+      runway: plannedToRwy || String(matchedToRwy.identifier || origin.plan_rwy || ''),
+    },
+    landing: {
+      ...(vrefNum > 0 && { vref: asKnots(vrefNum) }),
+      ...(vappNum > 0 && { vapp: asKnots(vappNum) }),
+      ...(vgaNum > 0 && { vga: asKnots(vgaNum) }),
+      flaps: rawLanding.conditions?.flap_setting || ldgDistBlock.flap_setting || rawLanding.flaps || undefined,
+      autobrake: ldgDistBlock.brake_setting || rawLanding.autobrake || undefined,
+      runway: String(rawLanding.conditions?.planned_runway || destination.plan_rwy || ''),
+    }
+  } : undefined;
+
   const flightContext: FlightContext = {
     flightNumber: general.flight_number || '',
     callsign: (general.icao_airline || '') + (general.flight_number || ''),
@@ -144,6 +182,7 @@ export function parseAndNormalizeSimBrief(raw: any): SimBriefAdapterResult {
       taxiInMinutes: Number(times.taxi_in || 0),
       totalBlockMinutes: Number(times.est_block || 0),
     },
+    ...(tlrSpeeds && { tlrSpeeds }),
   };
 
   // Run validation checks on required values
